@@ -294,8 +294,16 @@ public class Bootstrap {
             if (directiveType.argumentType(argumentName).isNotNull()) {
                 argumentType = GraphQLNonNull.nonNull(argumentType);
             }
-            directiveBuilder = directiveBuilder
-                    .argument(GraphQLArgument.newArgument().type(argumentType).name(argumentName).build());
+
+            GraphQLArgument.Builder argumentBuilder = GraphQLArgument.newArgument()
+                    .name(argumentName)
+                    .type(argumentType);
+            if (directiveType.argumentType(argumentName).hasDefaultValue()) {
+                argumentBuilder = argumentBuilder.defaultValueProgrammatic(
+                        sanitizeDefaultValue(directiveType.argumentType(argumentName)));
+            }
+
+            directiveBuilder = directiveBuilder.argument(argumentBuilder.build());
         }
         directiveBuilder.repeatable(directiveType.isRepeatable());
         directiveTypes.add(directiveBuilder.build());
