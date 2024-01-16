@@ -87,6 +87,7 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(Repeatable.class));
 
             // directives from the API module
+            indexer.index(convertClassToInputStream(Authenticated.class));
             indexer.index(convertClassToInputStream(ComposeDirective.class));
             indexer.index(convertClassToInputStream(Extends.class));
             indexer.index(convertClassToInputStream(External.class));
