@@ -2,6 +2,7 @@ package io.smallrye.graphql.entry.http;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.Override;
 import java.lang.annotation.Repeatable;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -29,6 +30,7 @@ import org.jboss.jandex.IndexView;
 import org.jboss.jandex.Indexer;
 
 import io.smallrye.graphql.api.Entry;
+import io.smallrye.graphql.api.federation.Authenticated;
 import io.smallrye.graphql.api.federation.ComposeDirective;
 import io.smallrye.graphql.api.federation.Extends;
 import io.smallrye.graphql.api.federation.External;
