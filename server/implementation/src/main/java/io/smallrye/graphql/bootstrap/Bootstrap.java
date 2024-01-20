@@ -693,6 +693,31 @@ public class Bootstrap {
 
             directive.argument(argumentBuilder.build());
         }
+
+        // It is possible that the corresponding DirectiveType contains required arguments
+        for (String argumentName : directiveType.argumentNames()) {
+            // Check if this argument is not already defined in directiveInstance
+            if (!directiveInstance.getValues().containsKey(argumentName)) {
+                DirectiveArgument argumentType = directiveType.argumentType(argumentName);
+                // If the argument is required and has no default value, throw an exception
+                if (argumentType.isNotNull() && !argumentType.hasDefaultValue()) {
+                    throw new IllegalArgumentException(
+                            "Definition of type @" + directiveType.getName() + " contains a required argument named " +
+                                    argumentName + ", but directive instance " + directiveInstance +
+                                    " does not contain a value for it");
+                }
+
+                GraphQLArgument.Builder argumentBuilder = GraphQLArgument.newArgument()
+                        .name(argumentName)
+                        .type(argumentType(argumentType));
+                if (argumentType.hasDefaultValue()) {
+                    argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argumentType));
+                }
+
+                directive.argument(argumentBuilder.build());
+            }
+        }
+
         return directive.build();
     }
 
