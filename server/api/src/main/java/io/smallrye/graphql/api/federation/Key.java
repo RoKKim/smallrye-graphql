@@ -16,7 +16,7 @@ import io.smallrye.graphql.api.Directive;
 import io.smallrye.graphql.api.federation.Key.Keys;
 
 /**
- * <b><code>directive @key(fields: FieldSet!) repeatable on OBJECT | INTERFACE</code></b>
+ * <b><code>directive @key(fields: FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE</code></b>
  *
  * @see <a href="https://www.apollographql.com/docs/federation/federated-types/federated-directives/#key">federation spec</a>
  */
