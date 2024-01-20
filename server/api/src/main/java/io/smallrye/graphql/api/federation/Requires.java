@@ -22,8 +22,6 @@ import io.smallrye.graphql.api.Directive;
         "that are resolved by other subgraphs. This tells the graph router that it needs to fetch the values " +
         "of those externally defined fields first, even if the original client query didn't request them.")
 @Retention(RUNTIME)
-@Experimental("SmallRye GraphQL Federation is still subject to change. " +
-        "Additionally, this annotation is currently only a directive without explicit support from the extension.")
 public @interface Requires {
     @NonNull
     String fields();
