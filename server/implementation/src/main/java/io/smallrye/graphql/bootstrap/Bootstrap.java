@@ -694,7 +694,6 @@ public class Bootstrap {
             directive.argument(argumentBuilder.build());
         }
 
-        // It is possible that the corresponding DirectiveType contains required arguments
         for (String argumentName : directiveType.argumentNames()) {
             // Check if this argument is not already defined in directiveInstance
             if (!directiveInstance.getValues().containsKey(argumentName)) {
