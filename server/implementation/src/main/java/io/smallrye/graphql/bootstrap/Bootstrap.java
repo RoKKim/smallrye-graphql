@@ -682,8 +682,16 @@ public class Bootstrap {
                                 " an argument named " + argumentName + ", but directive instance " + directiveInstance
                                 + " does contain a value for it");
             }
-            directive.argument(GraphQLArgument.newArgument().type(argumentType(argumentType)).name(argumentName)
-                    .value(entry.getValue()).build());
+
+            GraphQLArgument.Builder argumentBuilder = GraphQLArgument.newArgument()
+                    .name(argumentName)
+                    .type(argumentType(argumentType))
+                    .value(entry.getValue());
+            if (argumentType.hasDefaultValue()) {
+                argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argumentType));
+            }
+
+            directive.argument(argumentBuilder.build());
         }
         return directive.build();
     }
@@ -854,7 +862,7 @@ public class Bootstrap {
 
         // Default value (on method)
         if (field.hasDefaultValue()) {
-            inputFieldBuilder = inputFieldBuilder.defaultValue(sanitizeDefaultValue(field));
+            inputFieldBuilder = inputFieldBuilder.defaultValueProgrammatic(sanitizeDefaultValue(field));
         }
 
         return inputFieldBuilder.build();
@@ -989,7 +997,7 @@ public class Bootstrap {
                 .description(argument.getDescription());
 
         if (argument.hasDefaultValue()) {
-            argumentBuilder = argumentBuilder.defaultValue(sanitizeDefaultValue(argument));
+            argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argument));
         }
 
         GraphQLInputType graphQLInputType = referenceGraphQLInputType(argument);
