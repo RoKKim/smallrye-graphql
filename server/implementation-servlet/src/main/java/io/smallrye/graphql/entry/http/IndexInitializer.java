@@ -2,7 +2,6 @@ package io.smallrye.graphql.entry.http;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.Override;
 import java.lang.annotation.Repeatable;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -37,6 +36,7 @@ import io.smallrye.graphql.api.federation.External;
 import io.smallrye.graphql.api.federation.Inaccessible;
 import io.smallrye.graphql.api.federation.InterfaceObject;
 import io.smallrye.graphql.api.federation.Key;
+import io.smallrye.graphql.api.federation.Override;
 import io.smallrye.graphql.api.federation.Provides;
 import io.smallrye.graphql.api.federation.Requires;
 import io.smallrye.graphql.api.federation.Shareable;
