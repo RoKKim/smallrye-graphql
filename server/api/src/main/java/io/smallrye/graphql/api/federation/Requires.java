@@ -25,9 +25,8 @@ import io.smallrye.graphql.api.Directive;
 @Experimental("SmallRye GraphQL Federation is still subject to change.")
 public @interface Requires {
     @NonNull
-    @Description(
-            "A GraphQL selection set (provided as a string) of @external object fields and subfields that this field " +
-                    "requires.\n" +
+    @Description("A GraphQL selection set (provided as a string) of @external object fields and subfields that this field " +
+            "requires.\n" +
             "Examples:\n" +
             "\"name\"\n" +
             "\"name address\"\n" +

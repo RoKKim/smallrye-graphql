@@ -3,16 +3,15 @@ package io.smallrye.graphql.schema.helper;
 import static java.util.stream.Collectors.toList;
 import static org.jboss.jandex.AnnotationValue.Kind.ARRAY;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.DotName;
 import org.jboss.logging.Logger;
 
+import io.smallrye.graphql.api.federation.policy.Policy;
+import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
 import io.smallrye.graphql.schema.Annotations;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.DirectiveType;
@@ -64,9 +63,38 @@ public class Directives {
 
     private DirectiveInstance toDirectiveInstance(AnnotationInstance annotationInstance) {
         DirectiveInstance directiveInstance = new DirectiveInstance();
-        directiveInstance.setType(directiveTypes.get(annotationInstance.name()));
-        for (AnnotationValue annotationValue : annotationInstance.values()) {
-            directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
+        DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
+        directiveInstance.setType(directiveType);
+        try {
+            Class<?> clazz = Class.forName(directiveType.getClassName());
+            for (AnnotationValue annotationValue : annotationInstance.values()) {
+                if (RequiresScopes.class.isAssignableFrom(clazz)) {
+                    LOG.info("RequiresScopes");
+                } else if (Policy.class.isAssignableFrom(clazz)) {
+                    AnnotationValue[] nestedValues = (AnnotationValue[]) annotationValue.value();
+                    for (AnnotationValue nestedValue : nestedValues) {
+                        AnnotationValue policyGroupValues = nestedValue.asNested().values().get(0);
+                        AnnotationValue[] policiesArray = (AnnotationValue[]) policyGroupValues.value();
+                        List<String> policies = new ArrayList<>();
+                        for (AnnotationValue policyValue : policiesArray) {
+                            policies.add(policyValue.asString());
+                        }
+
+                        //                        AnnotationInstance nestedInstance = nestedValue.asNested();
+                        //                        List<String> policies = new ArrayList<>();
+                        //                        for (AnnotationValue policyGroupValue : nestedInstance.values()) {
+                        //                            AnnotationValue[] policyGroupValueRaw = (AnnotationValue[]) policyGroupValue.value();
+                        //                            for (AnnotationValue singlePolicyValue : policyGroupValueRaw) {
+                        //                                policies.add(singlePolicyValue.asString());
+                        //                            }
+                        //                        }
+                    }
+                } else {
+                    directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
         }
         return directiveInstance;
     }
