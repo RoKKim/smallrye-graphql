@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toList;
 import static org.jboss.jandex.AnnotationValue.Kind.ARRAY;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
@@ -65,37 +66,41 @@ public class Directives {
         DirectiveInstance directiveInstance = new DirectiveInstance();
         DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
         directiveInstance.setType(directiveType);
-        try {
-            Class<?> clazz = Class.forName(directiveType.getClassName());
-            for (AnnotationValue annotationValue : annotationInstance.values()) {
-                if (RequiresScopes.class.isAssignableFrom(clazz)) {
-                    LOG.info("RequiresScopes");
-                } else if (Policy.class.isAssignableFrom(clazz)) {
-                    AnnotationValue[] nestedValues = (AnnotationValue[]) annotationValue.value();
-                    for (AnnotationValue nestedValue : nestedValues) {
-                        AnnotationValue policyGroupValues = nestedValue.asNested().values().get(0);
-                        AnnotationValue[] policiesArray = (AnnotationValue[]) policyGroupValues.value();
-                        List<String> policies = new ArrayList<>();
-                        for (AnnotationValue policyValue : policiesArray) {
-                            policies.add(policyValue.asString());
-                        }
 
-                        //                        AnnotationInstance nestedInstance = nestedValue.asNested();
-                        //                        List<String> policies = new ArrayList<>();
-                        //                        for (AnnotationValue policyGroupValue : nestedInstance.values()) {
-                        //                            AnnotationValue[] policyGroupValueRaw = (AnnotationValue[]) policyGroupValue.value();
-                        //                            for (AnnotationValue singlePolicyValue : policyGroupValueRaw) {
-                        //                                policies.add(singlePolicyValue.asString());
-                        //                            }
-                        //                        }
-                    }
-                } else {
-                    directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
-                }
-            }
+        Class<?> clazz = null;
+        try {
+            clazz = Class.forName(directiveType.getClassName());
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
         }
+
+        for (AnnotationValue annotationValue : annotationInstance.values()) {
+            if (RequiresScopes.class.isAssignableFrom(clazz)) {
+                LOG.info("RequiresScopes");
+            } else if (Policy.class.isAssignableFrom(clazz)) {
+                List<List<String>> policiesList = Arrays.stream((AnnotationValue[]) annotationValue.value())
+                        .map(nestedValue -> nestedValue.asNested().values().get(0))
+                        .map(policyGroupValues -> Arrays.stream((AnnotationValue[]) policyGroupValues.value())
+                                .map(AnnotationValue::asString)
+                                .collect(Collectors.toList()))
+                        .collect(Collectors.toList());
+                LOG.info("Policy");
+
+                //                AnnotationValue[] nestedValues = (AnnotationValue[]) annotationValue.value();
+                //                for (AnnotationValue nestedValue : nestedValues) {
+                //                    AnnotationValue policyGroupValues = nestedValue.asNested().values().get(0);
+                //                    AnnotationValue[] policiesArray = (AnnotationValue[]) policyGroupValues.value();
+                //                    List<String> policies = new ArrayList<>();
+                //                    for (AnnotationValue policyValue : policiesArray) {
+                //                        policies.add(policyValue.asString());
+                //                    }
+                //                }
+                directiveInstance.setValue(annotationValue.name(), policiesList);
+            } else {
+                directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
+            }
+        }
+
         return directiveInstance;
     }
 
