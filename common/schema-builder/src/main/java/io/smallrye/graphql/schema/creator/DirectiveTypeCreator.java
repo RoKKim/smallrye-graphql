@@ -3,15 +3,15 @@ package io.smallrye.graphql.schema.creator;
 import static io.smallrye.graphql.schema.Annotations.DIRECTIVE;
 import static java.util.stream.Collectors.toSet;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.jboss.jandex.AnnotationInstance;
-import org.jboss.jandex.ClassInfo;
-import org.jboss.jandex.DotName;
-import org.jboss.jandex.MethodInfo;
+import org.jboss.jandex.*;
 import org.jboss.logging.Logger;
 
+import io.smallrye.graphql.api.federation.policy.Policy;
+import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
 import io.smallrye.graphql.schema.Annotations;
 import io.smallrye.graphql.schema.helper.DescriptionHelper;
 import io.smallrye.graphql.schema.helper.Direction;
@@ -46,14 +46,39 @@ public class DirectiveTypeCreator extends ModelCreator {
         directiveType.setLocations(getLocations(classInfo.declaredAnnotation(DIRECTIVE)));
         directiveType.setRepeatable(classInfo.hasAnnotation(Annotations.REPEATABLE));
 
+        Class<?> clazz;
+        try {
+            clazz = Class.forName(directiveType.getClassName());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
+        }
+
         for (MethodInfo method : classInfo.methods()) {
             DirectiveArgument argument = new DirectiveArgument();
-            argument.setReference(referenceCreator.createReferenceForOperationArgument(method.returnType(), null));
-            argument.setName(method.name());
-            Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
-            populateField(Direction.IN, argument, method.returnType(), annotationsForMethod);
-            if (annotationsForMethod.containsOneOfTheseAnnotations(NON_NULL)) {
-                argument.setNotNull(true);
+            if (RequiresScopes.class.isAssignableFrom(clazz) || Policy.class.isAssignableFrom(clazz)) {
+                DotName stringDotName = DotName.createSimple(String.class.getName());
+
+                // AnnotationInstance nonNullAnnotation = AnnotationInstance.create(Annotations.NON_NULL, null, Collections.emptyList());
+
+                Type stringType = ClassType.create(stringDotName, Type.Kind.CLASS);
+                Type stringArrayType = ArrayType.create(stringType, 1);
+                Type string2DArrayType = ArrayType.create(stringArrayType, 1);
+                argument.setReference(referenceCreator.createReferenceForOperationArgument(string2DArrayType, null));
+
+                argument.setName(method.name());
+                Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
+                populateField(Direction.IN, argument, string2DArrayType, annotationsForMethod);
+                if (annotationsForMethod.containsOneOfTheseAnnotations(NON_NULL)) {
+                    argument.setNotNull(true);
+                }
+            } else {
+                argument.setReference(referenceCreator.createReferenceForOperationArgument(method.returnType(), null));
+                argument.setName(method.name());
+                Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
+                populateField(Direction.IN, argument, method.returnType(), annotationsForMethod);
+                if (annotationsForMethod.containsOneOfTheseAnnotations(NON_NULL)) {
+                    argument.setNotNull(true);
+                }
             }
             directiveType.addArgumentType(argument);
         }

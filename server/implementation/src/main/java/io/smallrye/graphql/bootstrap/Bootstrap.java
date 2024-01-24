@@ -283,6 +283,7 @@ public class Bootstrap {
     }
 
     private void createGraphQLDirectiveType(DirectiveType directiveType) {
+        // todo RokM nonnull RequiresScopes, Policy
         GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
                 .name(directiveType.getName())
                 .description(directiveType.getDescription());
@@ -311,8 +312,13 @@ public class Bootstrap {
 
     private GraphQLInputType argumentType(DirectiveArgument argumentType) {
         GraphQLInputType inputType = getGraphQLInputType(argumentType.getReference());
-        if (argumentType.hasWrapper() && argumentType.getWrapper().isCollectionOrArrayOrMap()) {
-            inputType = list(inputType);
+        Wrapper wrapper = argumentType.getWrapper();
+        if (argumentType.hasWrapper() && wrapper.isCollectionOrArrayOrMap()) {
+            Wrapper innerWrapper = wrapper.getWrapper();
+            if (wrapper.hasWrapper() && innerWrapper.isCollectionOrArrayOrMap()) {
+                return list(list(inputType));
+            }
+            return list(inputType);
         }
         return inputType;
     }

@@ -67,7 +67,7 @@ public class Directives {
         DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
         directiveInstance.setType(directiveType);
 
-        Class<?> clazz = null;
+        Class<?> clazz;
         try {
             clazz = Class.forName(directiveType.getClassName());
         } catch (ClassNotFoundException e) {
@@ -76,25 +76,22 @@ public class Directives {
 
         for (AnnotationValue annotationValue : annotationInstance.values()) {
             if (RequiresScopes.class.isAssignableFrom(clazz)) {
-                LOG.info("RequiresScopes");
+                // todo RokM check if array empty
+                List<List<String>> scopesList = Arrays.stream((AnnotationValue[]) annotationValue.value())
+                        .map(nestedValue -> nestedValue.asNested().values().get(0))
+                        .map(scopeGroupValues -> Arrays.stream((AnnotationValue[]) scopeGroupValues.value())
+                                .map(AnnotationValue::asString)
+                                .collect(Collectors.toList()))
+                        .collect(Collectors.toList());
+                directiveInstance.setValue(annotationValue.name(), scopesList);
             } else if (Policy.class.isAssignableFrom(clazz)) {
+                // todo RokM check if array empty
                 List<List<String>> policiesList = Arrays.stream((AnnotationValue[]) annotationValue.value())
                         .map(nestedValue -> nestedValue.asNested().values().get(0))
                         .map(policyGroupValues -> Arrays.stream((AnnotationValue[]) policyGroupValues.value())
                                 .map(AnnotationValue::asString)
                                 .collect(Collectors.toList()))
                         .collect(Collectors.toList());
-                LOG.info("Policy");
-
-                //                AnnotationValue[] nestedValues = (AnnotationValue[]) annotationValue.value();
-                //                for (AnnotationValue nestedValue : nestedValues) {
-                //                    AnnotationValue policyGroupValues = nestedValue.asNested().values().get(0);
-                //                    AnnotationValue[] policiesArray = (AnnotationValue[]) policyGroupValues.value();
-                //                    List<String> policies = new ArrayList<>();
-                //                    for (AnnotationValue policyValue : policiesArray) {
-                //                        policies.add(policyValue.asString());
-                //                    }
-                //                }
                 directiveInstance.setValue(annotationValue.name(), policiesList);
             } else {
                 directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
