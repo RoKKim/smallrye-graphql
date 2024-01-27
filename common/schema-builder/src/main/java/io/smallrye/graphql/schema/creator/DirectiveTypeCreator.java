@@ -1,6 +1,7 @@
 package io.smallrye.graphql.schema.creator;
 
 import static io.smallrye.graphql.schema.Annotations.DIRECTIVE;
+import static io.smallrye.graphql.schema.Annotations.NON_NULL;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Collections;
@@ -32,8 +33,6 @@ public class DirectiveTypeCreator extends ModelCreator {
                 "This method should never be called since 'DirectiveType' cannot have another directives");
     }
 
-    private static DotName NON_NULL = DotName.createSimple("org.eclipse.microprofile.graphql.NonNull");
-
     public DirectiveType create(ClassInfo classInfo) {
         LOG.debug("Creating directive from " + classInfo.name().toString());
 
@@ -55,30 +54,25 @@ public class DirectiveTypeCreator extends ModelCreator {
 
         for (MethodInfo method : classInfo.methods()) {
             DirectiveArgument argument = new DirectiveArgument();
+            Type argumentType;
             if (RequiresScopes.class.isAssignableFrom(clazz) || Policy.class.isAssignableFrom(clazz)) {
+                // For both of these directives, we need to override the argument type to be an array of nested arrays
+                // of strings, where none of the nested elements can be null
+                AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,
+                        Collections.emptyList());
                 DotName stringDotName = DotName.createSimple(String.class.getName());
-
-                // AnnotationInstance nonNullAnnotation = AnnotationInstance.create(Annotations.NON_NULL, null, Collections.emptyList());
-
-                Type stringType = ClassType.create(stringDotName, Type.Kind.CLASS);
-                Type stringArrayType = ArrayType.create(stringType, 1);
-                Type string2DArrayType = ArrayType.create(stringArrayType, 1);
-                argument.setReference(referenceCreator.createReferenceForOperationArgument(string2DArrayType, null));
-
-                argument.setName(method.name());
-                Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
-                populateField(Direction.IN, argument, string2DArrayType, annotationsForMethod);
-                if (annotationsForMethod.containsOneOfTheseAnnotations(NON_NULL)) {
-                    argument.setNotNull(true);
-                }
+                Type stringType = ClassType.createWithAnnotations(stringDotName, Type.Kind.CLASS,
+                        new AnnotationInstance[] { nonNullAnnotation });
+                argumentType = buildArrayType(stringType, 2, nonNullAnnotation);
             } else {
-                argument.setReference(referenceCreator.createReferenceForOperationArgument(method.returnType(), null));
-                argument.setName(method.name());
-                Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
-                populateField(Direction.IN, argument, method.returnType(), annotationsForMethod);
-                if (annotationsForMethod.containsOneOfTheseAnnotations(NON_NULL)) {
-                    argument.setNotNull(true);
-                }
+                argumentType = method.returnType();
+            }
+            argument.setReference(referenceCreator.createReferenceForOperationArgument(argumentType, null));
+            argument.setName(method.name());
+            Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
+            populateField(Direction.IN, argument, argumentType, annotationsForMethod);
+            if (annotationsForMethod.containsOneOfTheseAnnotations(NON_NULL)) {
+                argument.setNotNull(true);
             }
             directiveType.addArgumentType(argument);
         }
@@ -96,5 +90,15 @@ public class DirectiveTypeCreator extends ModelCreator {
     private Set<String> getLocations(AnnotationInstance directiveAnnotation) {
         return Stream.of(directiveAnnotation.value("on").asEnumArray())
                 .collect(toSet());
+    }
+
+    private static Type buildArrayType(Type baseType, int dimensions, AnnotationInstance annotation) {
+        Type currentType = baseType;
+        for (int i = 0; i < dimensions; i++) {
+            ArrayType.Builder builder = ArrayType.builder(currentType, 1);
+            builder.addAnnotation(annotation);
+            currentType = builder.build();
+        }
+        return currentType;
     }
 }
