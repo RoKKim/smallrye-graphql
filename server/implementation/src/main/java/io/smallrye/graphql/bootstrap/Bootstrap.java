@@ -283,7 +283,6 @@ public class Bootstrap {
     }
 
     private void createGraphQLDirectiveType(DirectiveType directiveType) {
-        // todo RokM nonnull RequiresScopes, Policy
         GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
                 .name(directiveType.getName())
                 .description(directiveType.getDescription());
@@ -291,36 +290,22 @@ public class Bootstrap {
             directiveBuilder.validLocation(DirectiveLocation.valueOf(location));
         }
         for (String argumentName : directiveType.argumentNames()) {
-            GraphQLInputType argumentType = argumentType(directiveType.argumentType(argumentName));
-            if (directiveType.argumentType(argumentName).isNotNull()) {
-                argumentType = GraphQLNonNull.nonNull(argumentType);
-            }
+            DirectiveArgument argumentType = directiveType.argumentType(argumentName);
+            GraphQLInputType inputType = createGraphQLInputType(argumentType);
 
             GraphQLArgument.Builder argumentBuilder = GraphQLArgument.newArgument()
                     .name(argumentName)
-                    .type(argumentType);
-            if (directiveType.argumentType(argumentName).hasDefaultValue()) {
+                    .type(inputType);
+
+            if (argumentType.hasDefaultValue()) {
                 argumentBuilder = argumentBuilder.defaultValueProgrammatic(
-                        sanitizeDefaultValue(directiveType.argumentType(argumentName)));
+                        sanitizeDefaultValue(argumentType));
             }
 
             directiveBuilder = directiveBuilder.argument(argumentBuilder.build());
         }
         directiveBuilder.repeatable(directiveType.isRepeatable());
         directiveTypes.add(directiveBuilder.build());
-    }
-
-    private GraphQLInputType argumentType(DirectiveArgument argumentType) {
-        GraphQLInputType inputType = getGraphQLInputType(argumentType.getReference());
-        Wrapper wrapper = argumentType.getWrapper();
-        if (argumentType.hasWrapper() && wrapper.isCollectionOrArrayOrMap()) {
-            Wrapper innerWrapper = wrapper.getWrapper();
-            if (wrapper.hasWrapper() && innerWrapper.isCollectionOrArrayOrMap()) {
-                return list(list(inputType));
-            }
-            return list(inputType);
-        }
-        return inputType;
     }
 
     private void addQueries(GraphQLSchema.Builder schemaBuilder) {
@@ -688,11 +673,13 @@ public class Bootstrap {
                                 " an argument named " + argumentName + ", but directive instance " + directiveInstance
                                 + " does contain a value for it");
             }
+            GraphQLInputType inputType = createGraphQLInputType(argumentType);
 
             GraphQLArgument.Builder argumentBuilder = GraphQLArgument.newArgument()
                     .name(argumentName)
-                    .type(argumentType(argumentType))
+                    .type(inputType)
                     .value(entry.getValue());
+
             if (argumentType.hasDefaultValue()) {
                 argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argumentType));
             }
@@ -711,10 +698,12 @@ public class Bootstrap {
                                     argumentName + ", but directive instance " + directiveInstance +
                                     " does not contain a value for it");
                 }
+                GraphQLInputType inputType = createGraphQLInputType(argumentType);
 
                 GraphQLArgument.Builder argumentBuilder = GraphQLArgument.newArgument()
                         .name(argumentName)
-                        .type(argumentType(argumentType));
+                        .type(inputType);
+
                 if (argumentType.hasDefaultValue()) {
                     argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argumentType));
                 }
@@ -899,31 +888,29 @@ public class Bootstrap {
     }
 
     private GraphQLInputType createGraphQLInputType(Field field) {
-
         GraphQLInputType graphQLInputType = referenceGraphQLInputType(field);
 
-        Wrapper wrapper = dataFetcherFactory.unwrap(field, false);
+        // Check if field is mandatory
+        if (field.isNotNull()) {
+            graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
+        }
 
-        // Collection
+        Wrapper wrapper = dataFetcherFactory.unwrap(field, false);
+        // Field can have a wrapper, like List<String>
         if (wrapper != null && wrapper.isCollectionOrArrayOrMap()) {
-            // Mandatory in the collection
-            if (wrapper.isNotEmpty()) {
-                graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
-            }
-            // Collection depth
+            // Loop as long as there is a wrapper
             do {
                 if (wrapper.isCollectionOrArrayOrMap()) {
                     graphQLInputType = list(graphQLInputType);
+                    // Wrapper itself can also be mandatory
+                    if (wrapper.isNotEmpty()) {
+                        graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
+                    }
                     wrapper = wrapper.getWrapper();
                 } else {
                     wrapper = null;
                 }
             } while (wrapper != null);
-        }
-
-        // Mandatory
-        if (field.isNotNull()) {
-            graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
         }
 
         return graphQLInputType;
@@ -932,28 +919,27 @@ public class Bootstrap {
     private GraphQLOutputType createGraphQLOutputType(Field field, boolean isBatch) {
         GraphQLOutputType graphQLOutputType = referenceGraphQLOutputType(field);
 
-        Wrapper wrapper = dataFetcherFactory.unwrap(field, isBatch);
+        // Check if field is mandatory
+        if (field.isNotNull()) {
+            graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
+        }
 
-        // Collection
+        Wrapper wrapper = dataFetcherFactory.unwrap(field, isBatch);
+        // Field can have a wrapper, like List<String>
         if (wrapper != null && wrapper.isCollectionOrArrayOrMap()) {
-            // Mandatory in the collection
-            if (wrapper.isNotEmpty()) {
-                graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
-            }
-            // Collection depth
+            // Loop as long as there is a wrapper
             do {
                 if (wrapper.isCollectionOrArrayOrMap()) {
                     graphQLOutputType = list(graphQLOutputType);
+                    // Wrapper itself can also be mandatory
+                    if (wrapper.isNotEmpty()) {
+                        graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
+                    }
                     wrapper = wrapper.getWrapper();
                 } else {
                     wrapper = null;
                 }
             } while (wrapper != null);
-        }
-
-        // Mandatory
-        if (field.isNotNull()) {
-            graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
         }
 
         return graphQLOutputType;
@@ -1030,32 +1016,7 @@ public class Bootstrap {
             argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argument));
         }
 
-        GraphQLInputType graphQLInputType = referenceGraphQLInputType(argument);
-
-        Wrapper wrapper = dataFetcherFactory.unwrap(argument, false);
-
-        // Collection
-        if (wrapper != null && wrapper.isCollectionOrArrayOrMap()) {
-            // Mandatory in the collection
-            if (wrapper.isNotEmpty()) {
-                graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
-            }
-            // Collection depth
-            do {
-                if (wrapper.isCollectionOrArrayOrMap()) {
-                    graphQLInputType = list(graphQLInputType);
-                    wrapper = wrapper.getWrapper();
-                } else {
-                    wrapper = null;
-                }
-            } while (wrapper != null);
-        }
-
-        // Mandatory
-        if (argument.isNotNull()) {
-            graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
-        }
-
+        GraphQLInputType graphQLInputType = createGraphQLInputType(argument);
         argumentBuilder = argumentBuilder.type(graphQLInputType);
 
         if (argument.hasDirectiveInstances()) {
@@ -1065,7 +1026,6 @@ public class Bootstrap {
         }
 
         return argumentBuilder.build();
-
     }
 
     private Object sanitizeDefaultValue(Field field) {
