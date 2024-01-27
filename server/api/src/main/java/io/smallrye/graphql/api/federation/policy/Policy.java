@@ -12,7 +12,7 @@ import io.smallrye.common.annotation.Experimental;
 import io.smallrye.graphql.api.Directive;
 
 /**
- * <b><code>directive @requiresScopes(scopes: [[Scope!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR |
+ * <b><code>directive @policy(policies: [[Policy!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR |
  * ENUM</code></b>
  *
  * @see <a href="https://www.apollographql.com/docs/federation/federated-types/federated-directives/#policy">
