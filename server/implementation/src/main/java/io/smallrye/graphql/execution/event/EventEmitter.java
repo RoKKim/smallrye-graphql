@@ -175,7 +175,14 @@ public class EventEmitter {
     public Map<String, Jsonb> fireOverrideJsonbConfig() {
         Map<String, Jsonb> overrides = new HashMap<>();
         for (EventingService extensionService : enabledServices) {
-            overrides.putAll(extensionService.overrideJsonbConfig());
+            Map<String, Jsonb> map = extensionService.overrideJsonbConfig();
+            map.forEach((clazz, jsonb) -> {
+                LOG.debug("Registering custom JsonB config for class " + clazz + " (it was returned by "
+                        + extensionService.getClass()
+                                .getName()
+                        + ")");
+                overrides.put(clazz, jsonb);
+            });
         }
         return overrides;
     }
