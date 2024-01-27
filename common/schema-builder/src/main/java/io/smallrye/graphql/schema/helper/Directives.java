@@ -4,7 +4,6 @@ import static java.util.stream.Collectors.toList;
 import static org.jboss.jandex.AnnotationValue.Kind.ARRAY;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
@@ -16,6 +15,7 @@ import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
 import io.smallrye.graphql.schema.Annotations;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.DirectiveType;
+import io.smallrye.graphql.spi.ClassloadingService;
 
 public class Directives {
 
@@ -67,32 +67,15 @@ public class Directives {
         DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
         directiveInstance.setType(directiveType);
 
-        Class<?> clazz;
-        try {
-            clazz = Class.forName(directiveType.getClassName());
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
-        }
+        ClassloadingService classloadingService = ClassloadingService.get();
+        Class<?> directiveClass = classloadingService.loadClass(directiveType.getClassName());
 
         for (AnnotationValue annotationValue : annotationInstance.values()) {
-            if (RequiresScopes.class.isAssignableFrom(clazz)) {
-                // todo RokM check if array empty
-                List<List<String>> scopesList = Arrays.stream((AnnotationValue[]) annotationValue.value())
-                        .map(nestedValue -> nestedValue.asNested().values().get(0))
-                        .map(scopeGroupValues -> Arrays.stream((AnnotationValue[]) scopeGroupValues.value())
-                                .map(AnnotationValue::asString)
-                                .collect(Collectors.toList()))
-                        .collect(Collectors.toList());
-                directiveInstance.setValue(annotationValue.name(), scopesList);
-            } else if (Policy.class.isAssignableFrom(clazz)) {
-                // todo RokM check if array empty
-                List<List<String>> policiesList = Arrays.stream((AnnotationValue[]) annotationValue.value())
-                        .map(nestedValue -> nestedValue.asNested().values().get(0))
-                        .map(policyGroupValues -> Arrays.stream((AnnotationValue[]) policyGroupValues.value())
-                                .map(AnnotationValue::asString)
-                                .collect(Collectors.toList()))
-                        .collect(Collectors.toList());
-                directiveInstance.setValue(annotationValue.name(), policiesList);
+            if (RequiresScopes.class.isAssignableFrom(directiveClass) || Policy.class.isAssignableFrom(
+                    directiveClass)) {
+                // For both of these directives, we need to process the annotation values as nested arrays of strings
+                List<List<String>> valueList = processAnnotationValues((AnnotationValue[]) annotationValue.value());
+                directiveInstance.setValue(annotationValue.name(), valueList);
             } else {
                 directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
             }
@@ -115,5 +98,21 @@ public class Directives {
 
     public Map<DotName, DirectiveType> getDirectiveTypes() {
         return directiveTypes;
+    }
+
+    private List<List<String>> processAnnotationValues(AnnotationValue[] annotationValues) {
+        if (annotationValues == null || annotationValues.length == 0) {
+            return Collections.emptyList();
+        }
+
+        List<List<String>> valuesList = new ArrayList<>();
+        for (AnnotationValue nestedValue : annotationValues) {
+            List<String> values = new ArrayList<>();
+            for (AnnotationValue value : (AnnotationValue[]) nestedValue.asNested().values().get(0).value()) {
+                values.add(value.asString());
+            }
+            valuesList.add(values);
+        }
+        return valuesList;
     }
 }

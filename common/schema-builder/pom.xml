@@ -19,7 +19,13 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>smallrye-graphql-api</artifactId>
         </dependency>
-        
+
+        <!-- The API -->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>smallrye-graphql</artifactId>
+        </dependency>
+
         <!-- The model -->
         <dependency>
             <groupId>${project.groupId}</groupId>

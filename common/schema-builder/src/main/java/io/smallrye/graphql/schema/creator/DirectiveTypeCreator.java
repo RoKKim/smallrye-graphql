@@ -19,6 +19,7 @@ import io.smallrye.graphql.schema.helper.Direction;
 import io.smallrye.graphql.schema.helper.TypeNameHelper;
 import io.smallrye.graphql.schema.model.DirectiveArgument;
 import io.smallrye.graphql.schema.model.DirectiveType;
+import io.smallrye.graphql.spi.ClassloadingService;
 
 public class DirectiveTypeCreator extends ModelCreator {
     private static final Logger LOG = Logger.getLogger(DirectiveTypeCreator.class.getName());
@@ -45,17 +46,14 @@ public class DirectiveTypeCreator extends ModelCreator {
         directiveType.setLocations(getLocations(classInfo.declaredAnnotation(DIRECTIVE)));
         directiveType.setRepeatable(classInfo.hasAnnotation(Annotations.REPEATABLE));
 
-        Class<?> clazz;
-        try {
-            clazz = Class.forName(directiveType.getClassName());
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
-        }
+        ClassloadingService classloadingService = ClassloadingService.get();
+        Class<?> directiveClass = classloadingService.loadClass(directiveType.getClassName());
 
         for (MethodInfo method : classInfo.methods()) {
             DirectiveArgument argument = new DirectiveArgument();
             Type argumentType;
-            if (RequiresScopes.class.isAssignableFrom(clazz) || Policy.class.isAssignableFrom(clazz)) {
+            if (RequiresScopes.class.isAssignableFrom(directiveClass) || Policy.class.isAssignableFrom(
+                    directiveClass)) {
                 // For both of these directives, we need to override the argument type to be an array of nested arrays
                 // of strings, where none of the nested elements can be null
                 AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,
