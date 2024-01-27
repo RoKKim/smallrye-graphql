@@ -19,7 +19,6 @@ import io.smallrye.graphql.schema.helper.Direction;
 import io.smallrye.graphql.schema.helper.TypeNameHelper;
 import io.smallrye.graphql.schema.model.DirectiveArgument;
 import io.smallrye.graphql.schema.model.DirectiveType;
-import io.smallrye.graphql.spi.ClassloadingService;
 
 public class DirectiveTypeCreator extends ModelCreator {
     private static final Logger LOG = Logger.getLogger(DirectiveTypeCreator.class.getName());
@@ -46,8 +45,12 @@ public class DirectiveTypeCreator extends ModelCreator {
         directiveType.setLocations(getLocations(classInfo.declaredAnnotation(DIRECTIVE)));
         directiveType.setRepeatable(classInfo.hasAnnotation(Annotations.REPEATABLE));
 
-        ClassloadingService classloadingService = ClassloadingService.get();
-        Class<?> directiveClass = classloadingService.loadClass(directiveType.getClassName());
+        Class<?> directiveClass;
+        try {
+            directiveClass = Class.forName(directiveType.getClassName());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
+        }
 
         for (MethodInfo method : classInfo.methods()) {
             DirectiveArgument argument = new DirectiveArgument();

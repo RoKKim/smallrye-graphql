@@ -15,7 +15,6 @@ import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
 import io.smallrye.graphql.schema.Annotations;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.DirectiveType;
-import io.smallrye.graphql.spi.ClassloadingService;
 
 public class Directives {
 
@@ -67,8 +66,12 @@ public class Directives {
         DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
         directiveInstance.setType(directiveType);
 
-        ClassloadingService classloadingService = ClassloadingService.get();
-        Class<?> directiveClass = classloadingService.loadClass(directiveType.getClassName());
+        Class<?> directiveClass;
+        try {
+            directiveClass = Class.forName(directiveType.getClassName());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
+        }
 
         for (AnnotationValue annotationValue : annotationInstance.values()) {
             if (RequiresScopes.class.isAssignableFrom(directiveClass) || Policy.class.isAssignableFrom(
