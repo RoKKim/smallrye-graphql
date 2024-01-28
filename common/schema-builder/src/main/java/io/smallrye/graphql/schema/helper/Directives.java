@@ -66,9 +66,12 @@ public class Directives {
         DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
         directiveInstance.setType(directiveType);
 
-        Class<?> directiveClass;
+        Class<?> directiveClass = null;
         try {
-            directiveClass = Class.forName(directiveType.getClassName());
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            if (loader != null) {
+                directiveClass = Class.forName(directiveType.getClassName(), false, loader);
+            }
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
         }

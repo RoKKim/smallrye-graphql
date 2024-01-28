@@ -45,9 +45,12 @@ public class DirectiveTypeCreator extends ModelCreator {
         directiveType.setLocations(getLocations(classInfo.declaredAnnotation(DIRECTIVE)));
         directiveType.setRepeatable(classInfo.hasAnnotation(Annotations.REPEATABLE));
 
-        Class<?> directiveClass;
+        Class<?> directiveClass = null;
         try {
-            directiveClass = Class.forName(directiveType.getClassName());
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            if (loader != null) {
+                directiveClass = Class.forName(directiveType.getClassName(), false, loader);
+            }
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
         }
