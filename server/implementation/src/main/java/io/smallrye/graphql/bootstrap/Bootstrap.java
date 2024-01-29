@@ -890,27 +890,26 @@ public class Bootstrap {
     private GraphQLInputType createGraphQLInputType(Field field) {
         GraphQLInputType graphQLInputType = referenceGraphQLInputType(field);
 
-        // Check if field is mandatory
-        if (field.isNotNull()) {
-            graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
-        }
-
         Wrapper wrapper = dataFetcherFactory.unwrap(field, false);
         // Field can have a wrapper, like List<String>
         if (wrapper != null && wrapper.isCollectionOrArrayOrMap()) {
             // Loop as long as there is a wrapper
             do {
                 if (wrapper.isCollectionOrArrayOrMap()) {
-                    graphQLInputType = list(graphQLInputType);
-                    // Wrapper itself can also be mandatory
-                    if (wrapper.isNotEmpty()) {
+                    if (wrapper.isWrappedTypeNotNull()) {
                         graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
                     }
+                    graphQLInputType = list(graphQLInputType);
                     wrapper = wrapper.getWrapper();
                 } else {
                     wrapper = null;
                 }
             } while (wrapper != null);
+        }
+
+        // Check if field is mandatory
+        if (field.isNotNull()) {
+            graphQLInputType = GraphQLNonNull.nonNull(graphQLInputType);
         }
 
         return graphQLInputType;
@@ -919,27 +918,26 @@ public class Bootstrap {
     private GraphQLOutputType createGraphQLOutputType(Field field, boolean isBatch) {
         GraphQLOutputType graphQLOutputType = referenceGraphQLOutputType(field);
 
-        // Check if field is mandatory
-        if (field.isNotNull()) {
-            graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
-        }
-
         Wrapper wrapper = dataFetcherFactory.unwrap(field, isBatch);
         // Field can have a wrapper, like List<String>
         if (wrapper != null && wrapper.isCollectionOrArrayOrMap()) {
             // Loop as long as there is a wrapper
             do {
                 if (wrapper.isCollectionOrArrayOrMap()) {
-                    graphQLOutputType = list(graphQLOutputType);
-                    // Wrapper itself can also be mandatory
-                    if (wrapper.isNotEmpty()) {
+                    if (wrapper.isWrappedTypeNotNull()) {
                         graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
                     }
+                    graphQLOutputType = list(graphQLOutputType);
                     wrapper = wrapper.getWrapper();
                 } else {
                     wrapper = null;
                 }
             } while (wrapper != null);
+        }
+
+        // Check if field is mandatory
+        if (field.isNotNull()) {
+            graphQLOutputType = GraphQLNonNull.nonNull(graphQLOutputType);
         }
 
         return graphQLOutputType;
