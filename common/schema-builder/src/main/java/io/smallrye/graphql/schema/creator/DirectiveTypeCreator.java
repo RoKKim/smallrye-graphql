@@ -8,7 +8,13 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.jboss.jandex.*;
+import org.jboss.jandex.AnnotationInstance;
+import org.jboss.jandex.ArrayType;
+import org.jboss.jandex.ClassInfo;
+import org.jboss.jandex.ClassType;
+import org.jboss.jandex.DotName;
+import org.jboss.jandex.MethodInfo;
+import org.jboss.jandex.Type;
 import org.jboss.logging.Logger;
 
 import io.smallrye.graphql.api.federation.policy.Policy;
@@ -21,6 +27,9 @@ import io.smallrye.graphql.schema.model.DirectiveArgument;
 import io.smallrye.graphql.schema.model.DirectiveType;
 
 public class DirectiveTypeCreator extends ModelCreator {
+    public static final DotName POLICY = DotName.createSimple(Policy.class.getName());
+    public static final DotName REQUIRES_SCOPES = DotName.createSimple(RequiresScopes.class.getName());
+
     private static final Logger LOG = Logger.getLogger(DirectiveTypeCreator.class.getName());
 
     public DirectiveTypeCreator(ReferenceCreator referenceCreator) {
@@ -45,21 +54,10 @@ public class DirectiveTypeCreator extends ModelCreator {
         directiveType.setLocations(getLocations(classInfo.declaredAnnotation(DIRECTIVE)));
         directiveType.setRepeatable(classInfo.hasAnnotation(Annotations.REPEATABLE));
 
-        Class<?> directiveClass = null;
-        try {
-            ClassLoader loader = Thread.currentThread().getContextClassLoader();
-            if (loader != null) {
-                directiveClass = Class.forName(directiveType.getClassName(), false, loader);
-            }
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
-        }
-
         for (MethodInfo method : classInfo.methods()) {
             DirectiveArgument argument = new DirectiveArgument();
             Type argumentType;
-            if (RequiresScopes.class.isAssignableFrom(directiveClass) || Policy.class.isAssignableFrom(
-                    directiveClass)) {
+            if (classInfo.name().equals(POLICY) || classInfo.name().equals(REQUIRES_SCOPES)) {
                 // For both of these directives, we need to override the argument type to be an array of nested arrays
                 // of strings, where none of the nested elements can be null
                 AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,

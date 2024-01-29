@@ -66,19 +66,9 @@ public class Directives {
         DirectiveType directiveType = directiveTypes.get(annotationInstance.name());
         directiveInstance.setType(directiveType);
 
-        Class<?> directiveClass = null;
-        try {
-            ClassLoader loader = Thread.currentThread().getContextClassLoader();
-            if (loader != null) {
-                directiveClass = Class.forName(directiveType.getClassName(), false, loader);
-            }
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Could not find class for directive: " + directiveType.getClassName(), e);
-        }
-
         for (AnnotationValue annotationValue : annotationInstance.values()) {
-            if (RequiresScopes.class.isAssignableFrom(directiveClass) || Policy.class.isAssignableFrom(
-                    directiveClass)) {
+            if (directiveType.getClassName().equals(Policy.class.getName()) ||
+                    directiveType.getClassName().equals(RequiresScopes.class.getName())) {
                 // For both of these directives, we need to process the annotation values as nested arrays of strings
                 List<List<String>> valueList = processAnnotationValues((AnnotationValue[]) annotationValue.value());
                 directiveInstance.setValue(annotationValue.name(), valueList);
