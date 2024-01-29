@@ -27,8 +27,10 @@ import io.smallrye.graphql.schema.model.DirectiveArgument;
 import io.smallrye.graphql.schema.model.DirectiveType;
 
 public class DirectiveTypeCreator extends ModelCreator {
-    public static final DotName POLICY = DotName.createSimple(Policy.class.getName());
-    public static final DotName REQUIRES_SCOPES = DotName.createSimple(RequiresScopes.class.getName());
+    private static final DotName POLICY = DotName.createSimple(Policy.class.getName());
+    private static final DotName REQUIRES_SCOPES = DotName.createSimple(RequiresScopes.class.getName());
+    private static final AnnotationInstance NON_NULL_INSTANCE = AnnotationInstance.create(NON_NULL, null,
+            Collections.emptyList());
 
     private static final Logger LOG = Logger.getLogger(DirectiveTypeCreator.class.getName());
 
@@ -60,12 +62,10 @@ public class DirectiveTypeCreator extends ModelCreator {
             if (classInfo.name().equals(POLICY) || classInfo.name().equals(REQUIRES_SCOPES)) {
                 // For both of these directives, we need to override the argument type to be an array of nested arrays
                 // of strings, where none of the nested elements can be null
-                AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,
-                        Collections.emptyList());
                 DotName stringDotName = DotName.createSimple(String.class.getName());
                 Type stringType = ClassType.createWithAnnotations(stringDotName, Type.Kind.CLASS,
-                        new AnnotationInstance[] { nonNullAnnotation });
-                argumentType = buildArrayType(stringType, 2, nonNullAnnotation);
+                        new AnnotationInstance[] { NON_NULL_INSTANCE });
+                argumentType = buildArrayType(stringType, 2, NON_NULL_INSTANCE);
             } else {
                 argumentType = method.returnType();
             }
