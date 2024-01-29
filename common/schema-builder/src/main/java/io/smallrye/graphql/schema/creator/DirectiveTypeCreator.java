@@ -30,8 +30,6 @@ public class DirectiveTypeCreator extends ModelCreator {
     private static final DotName POLICY = DotName.createSimple(Policy.class.getName());
     private static final DotName REQUIRES_SCOPES = DotName.createSimple(RequiresScopes.class.getName());
     private static final DotName STRING = DotName.createSimple(String.class.getName());
-    private static final AnnotationInstance NON_NULL_INSTANCE = AnnotationInstance.create(NON_NULL, null,
-            Collections.emptyList());
 
     private static final Logger LOG = Logger.getLogger(DirectiveTypeCreator.class.getName());
 
@@ -63,9 +61,11 @@ public class DirectiveTypeCreator extends ModelCreator {
             if (classInfo.name().equals(POLICY) || classInfo.name().equals(REQUIRES_SCOPES)) {
                 // For both of these directives, we need to override the argument type to be an array of nested arrays
                 // of strings, where none of the nested elements can be null
+                AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,
+                        Collections.emptyList());
                 Type stringType = ClassType.createWithAnnotations(STRING, Type.Kind.CLASS,
-                        new AnnotationInstance[] { NON_NULL_INSTANCE });
-                argumentType = buildArrayType(stringType, 2, NON_NULL_INSTANCE);
+                        new AnnotationInstance[] { nonNullAnnotation });
+                argumentType = buildArrayType(stringType, 2, nonNullAnnotation);
             } else {
                 argumentType = method.returnType();
             }
