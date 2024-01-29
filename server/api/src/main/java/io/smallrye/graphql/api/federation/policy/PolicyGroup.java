@@ -7,10 +7,9 @@ import java.lang.annotation.Retention;
 import org.eclipse.microprofile.graphql.NonNull;
 
 /**
- * @author RokM
+ * Defines a group of authorization policies, each representing a set used by the {@link Policy} directive.
  */
 @Retention(RUNTIME)
-// todo RokM documentation
 public @interface PolicyGroup {
     @NonNull
     String[] value();
