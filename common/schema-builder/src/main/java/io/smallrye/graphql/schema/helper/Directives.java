@@ -8,15 +8,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
+import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
+import org.jboss.jandex.MethodInfo;
 import org.jboss.logging.Logger;
 
 import io.smallrye.graphql.api.federation.policy.Policy;
 import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
 import io.smallrye.graphql.schema.Annotations;
+import io.smallrye.graphql.schema.ScanningContext;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.DirectiveType;
 
@@ -71,17 +75,33 @@ public class Directives {
         directiveInstance.setType(directiveType);
 
         for (AnnotationValue annotationValue : annotationInstance.values()) {
+            String annotationValueName = getAnnotationValueName(directiveType, annotationValue.name());
             if (directiveType.getClassName().equals(Policy.class.getName()) ||
                     directiveType.getClassName().equals(RequiresScopes.class.getName())) {
                 // For both of these directives, we need to process the annotation values as nested arrays of strings
                 List<List<String>> valueList = processAnnotationValues((AnnotationValue[]) annotationValue.value());
-                directiveInstance.setValue(annotationValue.name(), valueList);
+                directiveInstance.setValue(annotationValueName, valueList);
             } else {
-                directiveInstance.setValue(annotationValue.name(), valueObject(annotationValue));
+                directiveInstance.setValue(annotationValueName, valueObject(annotationValue));
             }
         }
 
         return directiveInstance;
+    }
+
+    private String getAnnotationValueName(DirectiveType directiveType, String annotationName) {
+        ClassInfo classInfo = ScanningContext.getIndex().getClassByName(directiveType.getClassName());
+
+        Optional<MethodInfo> matchingMethod = classInfo.methods().stream()
+                .filter(methodInfo -> methodInfo.name().equals(annotationName))
+                .findFirst();
+        if (matchingMethod.isPresent()) {
+            // if the method name is modified when creating the directive type, we need to use the modified name
+            MethodInfo method = matchingMethod.get();
+            Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
+            return TypeNameHelper.getMethodName(method, annotationsForMethod);
+        }
+        return annotationName;
     }
 
     private Object valueObject(AnnotationValue annotationValue) {
