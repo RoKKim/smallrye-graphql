@@ -35,12 +35,10 @@ public @interface Link {
     @Description("The foreign schema’s URL.")
     String url();
 
-    // todo RokM check default
     @Description("Change the namespace prefix assigned to the foreign schema.")
     String as() default "";
 
-    // todo RokM check default
-    // todo RokM change to type LinkImport
+    // todo RokM change to Import
     @Description("A list of elements to import from the foreign schema into the document.")
     @Name("import")
     String[] _import() default {};

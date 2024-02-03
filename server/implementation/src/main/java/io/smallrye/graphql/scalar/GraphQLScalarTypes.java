@@ -9,6 +9,8 @@ import java.util.UUID;
 import graphql.Scalars;
 import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLScalarType;
+import io.smallrye.graphql.scalar.federation.FieldSetScalar;
+import io.smallrye.graphql.scalar.federation.ImportScalar;
 import io.smallrye.graphql.scalar.number.BigDecimalScalar;
 import io.smallrye.graphql.scalar.number.BigIntegerScalar;
 import io.smallrye.graphql.scalar.number.FloatScalar;
@@ -19,6 +21,7 @@ import io.smallrye.graphql.scalar.time.DateTimeScalar;
 import io.smallrye.graphql.scalar.time.DurationScalar;
 import io.smallrye.graphql.scalar.time.PeriodScalar;
 import io.smallrye.graphql.scalar.time.TimeScalar;
+import io.smallrye.graphql.spi.config.Config;
 
 /**
  * Here we keep all the graphql-java scalars
@@ -96,6 +99,11 @@ public class GraphQLScalarTypes {
         mapType(new DurationScalar());
 
         mapType(new VoidScalar()); // Void
+
+        if (Config.get().isFederationEnabled()) {
+            mapType(new FieldSetScalar());
+            mapType(new ImportScalar());
+        }
 
         for (final GraphQLScalarType value : SCALAR_MAP.values()) {
             SCALARS_BY_NAME.put(value.getName(), value);
