@@ -428,7 +428,7 @@ public class SchemaBuilder {
         }
 
         // todo RokM rename scalars and directive definitions if they are located inside import, Add "federation__"
-        // todo RokM
+        // todo RokM renamed based on as argument on link directive
 
     }
 

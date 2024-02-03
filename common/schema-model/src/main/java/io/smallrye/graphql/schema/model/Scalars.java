@@ -50,6 +50,7 @@ public class Scalars {
     private static final String PERIOD = "Period";
     private static final String DURATION = "Duration";
     private static final String VOID = "Void";
+    private static final String FIELD_SET = "FieldSet";
 
     private Scalars() {
     }
@@ -181,6 +182,14 @@ public class Scalars {
         // Void
         populateScalar(Void.class.getName(), VOID, Void.class.getName());
         populateScalar(void.class.getName(), VOID, Void.class.getName());
+
+        // todo RokM not sure if this check is okay
+        if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
+            // todo RokM not sure if this is even needed
+            populateScalar("io.smallrye.graphql.api.federation.FieldSet", FIELD_SET,
+                    "io.smallrye.graphql.api.federation.FieldSet");
+            // todo RokM add import from link directive
+        }
     }
 
     private static void populateScalar(String className, String scalarName) {

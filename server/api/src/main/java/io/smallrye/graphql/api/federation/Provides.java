@@ -33,5 +33,6 @@ public @interface Provides {
             "\"name\"\n" +
             "\"name address\"\n" +
             "\"... on Person { name address }\" (valid for fields that return a union or interface)")
+    // todo RokM change to FieldSet
     String fields();
 }

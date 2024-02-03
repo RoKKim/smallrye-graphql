@@ -31,5 +31,6 @@ public @interface Requires {
             "\"name\"\n" +
             "\"name address\"\n" +
             "\"name organization { id }\"")
+    // todo RokM change to FieldSet
     String fields();
 }
