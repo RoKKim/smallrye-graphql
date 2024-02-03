@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.smallrye.graphql.api.federation.FieldSet;
+
 /**
  * Here we keep all the scalars we know about
  *
@@ -183,11 +185,9 @@ public class Scalars {
         populateScalar(Void.class.getName(), VOID, Void.class.getName());
         populateScalar(void.class.getName(), VOID, Void.class.getName());
 
-        // todo RokM not sure if this check is okay
+        // todo RokM not sure if this check is okay, should Config be used instead?
         if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
-            // todo RokM not sure if this is even needed
-            populateScalar("io.smallrye.graphql.api.federation.FieldSet", FIELD_SET,
-                    "io.smallrye.graphql.api.federation.FieldSet");
+            populateScalar(FieldSet.class.getName(), FIELD_SET, FieldSet.class.getName());
             // todo RokM add import from link directive
         }
     }

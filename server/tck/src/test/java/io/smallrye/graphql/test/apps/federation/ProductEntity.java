@@ -1,9 +1,9 @@
 package io.smallrye.graphql.test.apps.federation;
 
-import io.smallrye.graphql.api.federation.FieldSet;
 import org.eclipse.microprofile.graphql.Id;
 import org.eclipse.microprofile.graphql.Name;
 
+import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.api.federation.Key;
 
 @Key(fields = @FieldSet("id"))
