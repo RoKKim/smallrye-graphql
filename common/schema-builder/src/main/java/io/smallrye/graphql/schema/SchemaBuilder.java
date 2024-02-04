@@ -1,23 +1,17 @@
 package io.smallrye.graphql.schema;
 
-import static com.apollographql.federation.graphqljava.FederationDirectives.loadFederationSpecDefinitions;
 import static io.smallrye.graphql.schema.Annotations.CUSTOM_SCALAR;
 import static io.smallrye.graphql.schema.Annotations.DIRECTIVE;
 
-import java.lang.module.ModuleDescriptor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.jboss.jandex.AnnotationInstance;
@@ -29,15 +23,6 @@ import org.jboss.jandex.IndexView;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.logging.Logger;
 
-import com.apollographql.federation.graphqljava.directives.LinkDirectiveProcessor;
-import com.apollographql.federation.graphqljava.exceptions.UnsupportedFederationVersionException;
-import com.apollographql.federation.graphqljava.exceptions.UnsupportedLinkImportException;
-
-import graphql.language.DirectiveDefinition;
-import graphql.language.EnumTypeDefinition;
-import graphql.language.SDLNamedDefinition;
-import graphql.language.ScalarTypeDefinition;
-import graphql.schema.idl.TypeDefinitionRegistry;
 import io.smallrye.graphql.schema.creator.ArgumentCreator;
 import io.smallrye.graphql.schema.creator.DirectiveTypeCreator;
 import io.smallrye.graphql.schema.creator.FieldCreator;
@@ -56,14 +41,12 @@ import io.smallrye.graphql.schema.helper.Directives;
 import io.smallrye.graphql.schema.helper.GroupHelper;
 import io.smallrye.graphql.schema.helper.RolesAllowedDirectivesHelper;
 import io.smallrye.graphql.schema.helper.TypeAutoNameStrategy;
-import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.ErrorInfo;
 import io.smallrye.graphql.schema.model.Group;
 import io.smallrye.graphql.schema.model.Operation;
 import io.smallrye.graphql.schema.model.OperationType;
 import io.smallrye.graphql.schema.model.Reference;
 import io.smallrye.graphql.schema.model.ReferenceType;
-import io.smallrye.graphql.schema.model.Scalars;
 import io.smallrye.graphql.schema.model.Schema;
 
 /**
@@ -95,8 +78,6 @@ public class SchemaBuilder {
     private final CustomScalarCreator customScalarCreator;
 
     private final DotName FEDERATION_ANNOTATIONS_PACKAGE = DotName.createSimple("io.smallrye.graphql.api.federation");
-
-    private static final Pattern FEDERATION_VERSION_PATTERN = Pattern.compile("/v([\\d.]+)$");
 
     /**
      * This builds the Schema from Jandex
@@ -170,10 +151,6 @@ public class SchemaBuilder {
 
         // Add all custom datafetchers
         addDataFetchers(schema);
-
-        // todo RokM comment
-        // todo RokM maybe move upward
-        addLinkImportedTypes(schema);
 
         // Reset the maps.
         referenceCreator.clear();
@@ -339,149 +316,6 @@ public class SchemaBuilder {
                 }
             }
         }
-    }
-
-    /**
-     * This method is roughly based on the
-     * {@link LinkDirectiveProcessor#loadFederationImportedDefinitions(TypeDefinitionRegistry)}
-     * method, but since it only accepts {@link TypeDefinitionRegistry} as an argument, it is not directly usable here.
-     */
-    private void addLinkImportedTypes(Schema schema) {
-        List<DirectiveInstance> linkDirectives = schema.getDirectiveInstances().stream()
-                .filter(directiveInstance -> "link".equals(directiveInstance.getType().getName()))
-                .filter(directiveInstance -> {
-                    Map<String, Object> values = directiveInstance.getValues();
-                    if (values.containsKey("url") && values.get("url") instanceof String) {
-                        String url = (String) values.get("url");
-                        // Find urls that are defining the Federation spec
-                        return url.startsWith("https://specs.apollo.dev/federation/");
-                    }
-                    return false;
-                })
-                .collect(Collectors.toList());
-
-        // We can only have a single Federation spec link
-        if (linkDirectives.size() > 1) {
-            String directivesString = linkDirectives.stream()
-                    .map(DirectiveInstance::toString)
-                    .collect(Collectors.joining(", "));
-            throw new SchemaBuilderException("Multiple \"link\" directives found on schema: " + directivesString);
-        }
-
-        if (!linkDirectives.isEmpty()) {
-            DirectiveInstance linkDirective = linkDirectives.get(0);
-
-            String specLink = (String) linkDirective.getValues().get("url");
-            final String federationVersion;
-            try {
-                Matcher matcher = FEDERATION_VERSION_PATTERN.matcher(specLink);
-                if (matcher.find()) {
-                    federationVersion = matcher.group(1);
-                } else {
-                    throw new UnsupportedFederationVersionException(specLink);
-                }
-            } catch (Exception e) {
-                throw new UnsupportedFederationVersionException(specLink);
-            }
-
-            Map<String, String> imports = new LinkedHashMap<>();
-            Object[] importAnnotations = (Object[]) linkDirective.getValues().get("import");
-            // Parse imports based on name and as arguments
-            for (Object annotation : importAnnotations) {
-                AnnotationInstance annotationInstance = (AnnotationInstance) annotation;
-                String name = (String) annotationInstance.value("name").value();
-
-                String as = name;
-                if (annotationInstance.value("as") != null) {
-                    as = (String) annotationInstance.value("as").value();
-
-                    // Check the format of the as argument, as per the documentation
-                    if (!as.startsWith("@")) {
-                        throw new SchemaBuilderException(String.format(
-                                "Argument as %s for the name %s must start with '@'.", as, name));
-                    }
-                }
-                imports.put(name, as);
-            }
-
-            // We only support Federation 2.0
-            if (isVersionGreaterThan("2.0", federationVersion)) {
-                throw new UnsupportedFederationVersionException(specLink);
-            }
-            if (imports.containsKey("@composeDirective") && isVersionGreaterThan("2.1", federationVersion)) {
-                throw new UnsupportedLinkImportException("@composeDirective");
-            }
-            if (imports.containsKey("@interfaceObject") && isVersionGreaterThan("2.3", federationVersion)) {
-                throw new UnsupportedLinkImportException("@interfaceObject");
-            }
-            if (imports.containsKey("@authenticated") && isVersionGreaterThan("2.5", federationVersion)) {
-                throw new UnsupportedLinkImportException("@authenticated");
-            }
-            if (imports.containsKey("@requiresScopes") && isVersionGreaterThan("2.5", federationVersion)) {
-                throw new UnsupportedLinkImportException("@requiresScopes");
-            }
-            if (imports.containsKey("@policy") && isVersionGreaterThan("2.6", federationVersion)) {
-                throw new UnsupportedLinkImportException("@policy");
-            }
-
-            // todo RokM is this even needed
-            for (SDLNamedDefinition definition : loadFederationSpecDefinitions(specLink)) {
-                if (definition instanceof ScalarTypeDefinition) {
-                    ScalarTypeDefinition scalarType = (ScalarTypeDefinition) definition;
-                    Reference scalarTypeReference = Scalars.getScalar(scalarType.getName());
-                    if (scalarTypeReference == null) {
-                        throw new SchemaBuilderException(String.format(
-                                "ScalarType %s is defined in the Federation spec %s, but not found in the schema",
-                                scalarType.getName(), specLink));
-                    }
-                } else if (definition instanceof DirectiveDefinition) {
-                    DirectiveDefinition directive = (DirectiveDefinition) definition;
-                    boolean directiveTypeDefined = schema.getDirectiveTypes().stream()
-                            .anyMatch(directiveType -> directiveType.getName().equals(directive.getName()));
-                    if (!directiveTypeDefined) {
-                        throw new SchemaBuilderException(String.format(
-                                "Directive \"%s is defined in the Federation spec %s, but not found in the schema",
-                                directive.getName(), specLink));
-                    }
-                } else if (definition instanceof EnumTypeDefinition) {
-                    EnumTypeDefinition enumType = (EnumTypeDefinition) definition;
-                    boolean enumTypeDefined = schema.getEnums().containsKey(enumType.getName());
-                    if (!enumTypeDefined) {
-                        throw new SchemaBuilderException(String.format(
-                                "EnumType \"%s is defined in the Federation spec %s, but not found in the schema",
-                                enumType.getName(), specLink));
-                    }
-                }
-            }
-
-            imports.forEach((name, as) -> {
-                            // todo RokM check as
-            //                                // Check the format of the as argument, as per the documentation
-            //                    if (as.startsWith("@")) {
-            //                        throw new SchemaBuilderException(String.format(
-            //                                "Argument as %s for the name %s must not start with '@'.", as, name));
-            //                    }
-            //                    if (as.contains("__")) {
-            //                        throw new SchemaBuilderException(String.format(
-            //                                "Argument as %s for the name %s must not contain the namespace separator '__'.",
-            //                                as, name));
-            //                    }
-            //                    if (as.endsWith("_")) {
-            //                        throw new SchemaBuilderException(String.format(
-            //                                "Argument as %s for the name %s must not end with an underscore.", as, name));
-            //                    }
-            });
-        }
-
-        // todo RokM rename scalars and directive definitions if they are located inside import, Add "federation__"
-        // todo RokM renamed based on as argument on link directive
-
-    }
-
-    private static boolean isVersionGreaterThan(String version1, String version2) {
-        ModuleDescriptor.Version v1 = ModuleDescriptor.Version.parse(version1);
-        ModuleDescriptor.Version v2 = ModuleDescriptor.Version.parse(version2);
-        return v1.compareTo(v2) > 0;
     }
 
     private <T> void createAndAddToSchema(ReferenceType referenceType, Creator<T> creator, Consumer<T> consumer) {

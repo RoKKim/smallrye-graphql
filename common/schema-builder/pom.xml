@@ -46,16 +46,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- GraphQL Java -->
-        <dependency>
-            <groupId>com.graphql-java</groupId>
-            <artifactId>graphql-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.apollographql.federation</groupId>
-            <artifactId>federation-graphql-java-support</artifactId>
-        </dependency>
-
         <!-- Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

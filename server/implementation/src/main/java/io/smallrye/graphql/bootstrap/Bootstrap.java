@@ -1,5 +1,6 @@
 package io.smallrye.graphql.bootstrap;
 
+import static com.apollographql.federation.graphqljava.directives.LinkDirectiveProcessor.loadFederationImportedDefinitions;
 import static graphql.schema.GraphQLList.list;
 import static graphql.schema.visibility.DefaultGraphqlFieldVisibility.DEFAULT_FIELD_VISIBILITY;
 import static graphql.schema.visibility.NoIntrospectionGraphqlFieldVisibility.NO_INTROSPECTION_FIELD_VISIBILITY;
@@ -31,6 +32,7 @@ import org.eclipse.microprofile.graphql.Name;
 import com.apollographql.federation.graphqljava.Federation;
 
 import graphql.introspection.Introspection.DirectiveLocation;
+import graphql.language.SDLNamedDefinition;
 import graphql.schema.Coercing;
 import graphql.schema.DataFetcher;
 import graphql.schema.FieldCoordinates;
@@ -52,10 +54,13 @@ import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLTypeReference;
 import graphql.schema.GraphQLUnionType;
 import graphql.schema.TypeResolver;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import graphql.schema.visibility.BlockedFields;
 import graphql.schema.visibility.GraphqlFieldVisibility;
 import io.smallrye.graphql.SmallRyeGraphQLServerMessages;
 import io.smallrye.graphql.execution.Classes;
+import io.smallrye.graphql.execution.SchemaPrinter;
 import io.smallrye.graphql.execution.datafetcher.BatchDataFetcher;
 import io.smallrye.graphql.execution.datafetcher.CollectionCreator;
 import io.smallrye.graphql.execution.datafetcher.PlugableDataFetcher;
@@ -116,6 +121,8 @@ public class Bootstrap {
 
     private final ClassloadingService classloadingService = ClassloadingService.get();
 
+    private final LinkProcessor linkProcessor = new LinkProcessor();
+
     public static GraphQLSchema bootstrap(Schema schema) {
         return bootstrap(schema, false);
     }
@@ -166,6 +173,10 @@ public class Bootstrap {
     private void generateGraphQLSchema() {
         GraphQLSchema.Builder schemaBuilder = GraphQLSchema.newSchema();
 
+        if (Config.get().isFederationEnabled()) {
+            linkProcessor.createLinkImportedTypes(schema);
+        }
+
         createGraphQLCustomScalarTypes();
         createGraphQLEnumTypes();
         createGraphQLDirectiveTypes();
@@ -213,6 +224,12 @@ public class Bootstrap {
         } else {
             this.graphQLSchema = schemaBuilder.build();
         }
+
+        // todo RokM remove
+        String schemaString = new SchemaPrinter().print(graphQLSchema);
+        TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(schemaString);
+        Stream<SDLNamedDefinition> importedDefinitionsTemp = loadFederationImportedDefinitions(typeRegistry);
+        System.out.println("asd");
     }
 
     private TypeResolver fetchEntityType() {
