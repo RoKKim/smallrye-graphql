@@ -12,5 +12,5 @@ import org.eclipse.microprofile.graphql.NonNull;
 @Retention(RUNTIME)
 public @interface PolicyGroup {
     @NonNull
-    String[] value();
+    PolicyItem[] value();
 }
