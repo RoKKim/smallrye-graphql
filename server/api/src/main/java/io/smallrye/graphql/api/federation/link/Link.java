@@ -42,11 +42,10 @@ public @interface Link {
     @Name("import")
     Import[] _import() default {};
 
-    // todo RokM add
-    //    @Description("An optional purpose for this link. This hints to consumers as to whether they can safely ignore " +
-    //            "metadata described by a foreign schema.")
-    //    @Name("for")
-    //    Purpose _for();
+    @Description("An optional purpose for this link. This hints to consumers as to whether they can safely ignore " +
+            "metadata described by a foreign schema.")
+    @Name("for")
+    Purpose _for() default Purpose.UNDEFINED;
 
     @Retention(RUNTIME)
     @interface Links {
