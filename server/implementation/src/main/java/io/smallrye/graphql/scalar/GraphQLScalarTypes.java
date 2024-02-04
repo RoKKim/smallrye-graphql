@@ -11,6 +11,7 @@ import graphql.scalars.ExtendedScalars;
 import graphql.schema.GraphQLScalarType;
 import io.smallrye.graphql.scalar.federation.FieldSetScalar;
 import io.smallrye.graphql.scalar.federation.ImportScalar;
+import io.smallrye.graphql.scalar.federation.ScopeScalar;
 import io.smallrye.graphql.scalar.number.BigDecimalScalar;
 import io.smallrye.graphql.scalar.number.BigIntegerScalar;
 import io.smallrye.graphql.scalar.number.FloatScalar;
@@ -103,6 +104,7 @@ public class GraphQLScalarTypes {
         if (Config.get().isFederationEnabled()) {
             mapType(new FieldSetScalar());
             mapType(new ImportScalar());
+            mapType(new ScopeScalar());
         }
 
         for (final GraphQLScalarType value : SCALAR_MAP.values()) {

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.api.federation.link.Import;
+import io.smallrye.graphql.api.federation.requiresscopes.Scope;
 
 /**
  * Here we keep all the scalars we know about
@@ -55,6 +56,7 @@ public class Scalars {
     private static final String VOID = "Void";
     private static final String FIELD_SET = "FieldSet";
     private static final String IMPORT = "Import";
+    private static final String SCOPE = "Scope";
 
     private Scalars() {
     }
@@ -191,6 +193,7 @@ public class Scalars {
         if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
             populateScalar(FieldSet.class.getName(), FIELD_SET, FieldSet.class.getName());
             populateScalar(Import.class.getName(), IMPORT, Import.class.getName());
+            populateScalar(Scope.class.getName(), SCOPE, Scope.class.getName());
         }
     }
 

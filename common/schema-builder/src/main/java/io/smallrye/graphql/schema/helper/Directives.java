@@ -79,7 +79,7 @@ public class Directives {
             if (directiveType.getClassName().equals(Policy.class.getName()) ||
                     directiveType.getClassName().equals(RequiresScopes.class.getName())) {
                 // For both of these directives, we need to process the annotation values as nested arrays of strings
-                List<List<String>> valueList = processAnnotationValues((AnnotationValue[]) annotationValue.value());
+                List<List<Object>> valueList = processAnnotationValues((AnnotationValue[]) annotationValue.value());
                 directiveInstance.setValue(annotationValueName, valueList);
             } else {
                 directiveInstance.setValue(annotationValueName, valueObject(annotationValue));
@@ -120,16 +120,16 @@ public class Directives {
         return directiveTypes;
     }
 
-    private List<List<String>> processAnnotationValues(AnnotationValue[] annotationValues) {
+    private List<List<Object>> processAnnotationValues(AnnotationValue[] annotationValues) {
         if (annotationValues == null || annotationValues.length == 0) {
             return Collections.emptyList();
         }
 
-        List<List<String>> valuesList = new ArrayList<>();
+        List<List<Object>> valuesList = new ArrayList<>();
         for (AnnotationValue nestedValue : annotationValues) {
-            List<String> values = new ArrayList<>();
+            List<Object> values = new ArrayList<>();
             for (AnnotationValue value : (AnnotationValue[]) nestedValue.asNested().values().get(0).value()) {
-                values.add(value.asString());
+                values.add(valueObject(value));
             }
             valuesList.add(values);
         }

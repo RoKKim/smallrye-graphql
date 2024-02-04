@@ -34,6 +34,7 @@ import io.smallrye.graphql.api.federation.Authenticated;
 import io.smallrye.graphql.api.federation.ComposeDirective;
 import io.smallrye.graphql.api.federation.Extends;
 import io.smallrye.graphql.api.federation.External;
+import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.api.federation.Inaccessible;
 import io.smallrye.graphql.api.federation.InterfaceObject;
 import io.smallrye.graphql.api.federation.Key;
@@ -42,10 +43,12 @@ import io.smallrye.graphql.api.federation.Provides;
 import io.smallrye.graphql.api.federation.Requires;
 import io.smallrye.graphql.api.federation.Shareable;
 import io.smallrye.graphql.api.federation.Tag;
+import io.smallrye.graphql.api.federation.link.Import;
 import io.smallrye.graphql.api.federation.link.Link;
 import io.smallrye.graphql.api.federation.policy.Policy;
 import io.smallrye.graphql.api.federation.policy.PolicyGroup;
 import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
+import io.smallrye.graphql.api.federation.requiresscopes.Scope;
 import io.smallrye.graphql.api.federation.requiresscopes.ScopeGroup;
 
 /**
@@ -95,11 +98,14 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(Repeatable.class));
 
             // directives from the API module
+            // todo RokM add missing
             indexer.index(convertClassToInputStream(Authenticated.class));
             indexer.index(convertClassToInputStream(ComposeDirective.class));
             indexer.index(convertClassToInputStream(Deprecated.class));
             indexer.index(convertClassToInputStream(Extends.class));
             indexer.index(convertClassToInputStream(External.class));
+            indexer.index(convertClassToInputStream(FieldSet.class));
+            indexer.index(convertClassToInputStream(Import.class));
             indexer.index(convertClassToInputStream(Inaccessible.class));
             indexer.index(convertClassToInputStream(InterfaceObject.class));
             indexer.index(convertClassToInputStream(Key.class));
@@ -110,6 +116,7 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(Provides.class));
             indexer.index(convertClassToInputStream(Requires.class));
             indexer.index(convertClassToInputStream(RequiresScopes.class));
+            indexer.index(convertClassToInputStream(Scope.class));
             indexer.index(convertClassToInputStream(ScopeGroup.class));
             indexer.index(convertClassToInputStream(Shareable.class));
             indexer.index(convertClassToInputStream(Tag.class));

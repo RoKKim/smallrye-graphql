@@ -19,6 +19,7 @@ import org.jboss.logging.Logger;
 
 import io.smallrye.graphql.api.federation.policy.Policy;
 import io.smallrye.graphql.api.federation.requiresscopes.RequiresScopes;
+import io.smallrye.graphql.api.federation.requiresscopes.Scope;
 import io.smallrye.graphql.schema.Annotations;
 import io.smallrye.graphql.schema.helper.DescriptionHelper;
 import io.smallrye.graphql.schema.helper.Direction;
@@ -29,7 +30,9 @@ import io.smallrye.graphql.schema.model.DirectiveType;
 public class DirectiveTypeCreator extends ModelCreator {
     private static final DotName POLICY = DotName.createSimple(Policy.class.getName());
     private static final DotName REQUIRES_SCOPES = DotName.createSimple(RequiresScopes.class.getName());
+    // todo RokM remove
     private static final DotName STRING = DotName.createSimple(String.class.getName());
+    private static final DotName SCOPE = DotName.createSimple(Scope.class.getName());
 
     private static final Logger LOG = Logger.getLogger(DirectiveTypeCreator.class.getName());
 
@@ -58,7 +61,8 @@ public class DirectiveTypeCreator extends ModelCreator {
         for (MethodInfo method : classInfo.methods()) {
             DirectiveArgument argument = new DirectiveArgument();
             Type argumentType;
-            if (classInfo.name().equals(POLICY) || classInfo.name().equals(REQUIRES_SCOPES)) {
+            if (classInfo.name().equals(POLICY)) {
+                // todo RokM comment
                 // For both of these directives, we need to override the argument type to be an array of nested arrays
                 // of strings, where none of the nested elements can be null
                 AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,
@@ -66,6 +70,15 @@ public class DirectiveTypeCreator extends ModelCreator {
                 Type stringType = ClassType.createWithAnnotations(STRING, Type.Kind.CLASS,
                         new AnnotationInstance[] { nonNullAnnotation });
                 argumentType = buildArrayType(stringType, 2, nonNullAnnotation);
+            } else if (classInfo.name().equals(REQUIRES_SCOPES)) {
+                // todo RokM comment
+                // For both of these directives, we need to override the argument type to be an array of nested arrays
+                // of strings, where none of the nested elements can be null
+                AnnotationInstance nonNullAnnotation = AnnotationInstance.create(NON_NULL, null,
+                        Collections.emptyList());
+                Type scopeType = ClassType.createWithAnnotations(SCOPE, Type.Kind.CLASS,
+                        new AnnotationInstance[] { nonNullAnnotation });
+                argumentType = buildArrayType(scopeType, 2, nonNullAnnotation);
             } else {
                 argumentType = method.returnType();
             }
