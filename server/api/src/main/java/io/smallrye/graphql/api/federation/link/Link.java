@@ -27,7 +27,7 @@ import io.smallrye.graphql.api.federation.link.Link.Links;
 @Experimental("SmallRye GraphQL Federation is still subject to change.")
 public @interface Link {
     public static final String FEDERATION_SPEC_URL = "https://specs.apollo.dev/federation";
-    // raise to 2.6 once federation-jvm supports it, otherwise it will throw an error UnsupportedFederationVersionException
+    // todo RokM raise to 2.6 once federation-jvm supports it, otherwise it will throw an error UnsupportedFederationVersionException
     public static final String FEDERATION_SPEC_LATEST_VER = "2.5";
     public static final String FEDERATION_SPEC_LATEST_URL = FEDERATION_SPEC_URL + "/v" + FEDERATION_SPEC_LATEST_VER;
 
@@ -38,10 +38,9 @@ public @interface Link {
     @Description("Change the namespace prefix assigned to the foreign schema.")
     String as() default "";
 
-    // todo RokM change to Import
     @Description("A list of elements to import from the foreign schema into the document.")
     @Name("import")
-    String[] _import() default {};
+    Import[] _import() default {};
 
     // todo RokM add
     //    @Description("An optional purpose for this link. This hints to consumers as to whether they can safely ignore " +

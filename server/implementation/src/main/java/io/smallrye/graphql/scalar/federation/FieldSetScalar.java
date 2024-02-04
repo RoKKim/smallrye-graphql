@@ -4,8 +4,7 @@ import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.scalar.AbstractScalar;
 
 /**
- * Scalar for FieldSet.
- * Based on graphql-java's Scalars.GraphQLString
+ * Scalar for {@link FieldSet}.
  */
 public class FieldSetScalar extends AbstractScalar {
 

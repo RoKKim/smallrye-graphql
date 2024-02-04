@@ -17,7 +17,7 @@ public class FieldSetCoercing implements Coercing<Object, String> {
         if (input instanceof AnnotationInstance) {
             AnnotationInstance annotationInstance = (AnnotationInstance) input;
             if (FIELD_SET.equals(annotationInstance.name())) {
-                return (String) annotationInstance.value().value();
+                return (String) annotationInstance.value("value").value();
             } else {
                 throw new RuntimeException("Can not parse annotation " + annotationInstance.name() + " to FieldSet");
             }

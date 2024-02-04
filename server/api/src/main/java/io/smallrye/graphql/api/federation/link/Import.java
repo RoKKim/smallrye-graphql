@@ -1,4 +1,4 @@
-package io.smallrye.graphql.api.federation;
+package io.smallrye.graphql.api.federation.link;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -7,10 +7,12 @@ import java.lang.annotation.Retention;
 import org.eclipse.microprofile.graphql.NonNull;
 
 /**
- * String-serialized scalar represents a set of fields that's passed to a federated directive.
+ * An element, possibly aliased, to import into the document.
  */
 @Retention(RUNTIME)
-public @interface FieldSet {
+public @interface Import {
     @NonNull
-    String value();
+    String name();
+
+    String as() default "";
 }

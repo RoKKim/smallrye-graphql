@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.smallrye.graphql.api.federation.FieldSet;
+import io.smallrye.graphql.api.federation.link.Import;
 
 /**
  * Here we keep all the scalars we know about
@@ -53,6 +54,7 @@ public class Scalars {
     private static final String DURATION = "Duration";
     private static final String VOID = "Void";
     private static final String FIELD_SET = "FieldSet";
+    private static final String IMPORT = "Import";
 
     private Scalars() {
     }
@@ -188,7 +190,7 @@ public class Scalars {
         // todo RokM not sure if this check is okay, should Config be used instead?
         if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
             populateScalar(FieldSet.class.getName(), FIELD_SET, FieldSet.class.getName());
-            // todo RokM add import from link directive
+            populateScalar(Import.class.getName(), IMPORT, Import.class.getName());
         }
     }
 
