@@ -6,9 +6,9 @@ import static io.smallrye.graphql.schema.Annotations.DIRECTIVE;
 
 import java.lang.module.ModuleDescriptor;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +63,7 @@ import io.smallrye.graphql.schema.model.Operation;
 import io.smallrye.graphql.schema.model.OperationType;
 import io.smallrye.graphql.schema.model.Reference;
 import io.smallrye.graphql.schema.model.ReferenceType;
+import io.smallrye.graphql.schema.model.Scalars;
 import io.smallrye.graphql.schema.model.Schema;
 
 /**
@@ -369,10 +370,6 @@ public class SchemaBuilder {
 
         if (!linkDirectives.isEmpty()) {
             DirectiveInstance linkDirective = linkDirectives.get(0);
-            // todo RokM handle LinkImport, which can also have a rename
-            ArrayList<String> imports = Arrays.stream((Object[]) linkDirective.getValues().get("import"))
-                    .map(Object::toString)
-                    .collect(Collectors.toCollection(ArrayList::new));
 
             String specLink = (String) linkDirective.getValues().get("url");
             final String federationVersion;
@@ -387,44 +384,93 @@ public class SchemaBuilder {
                 throw new UnsupportedFederationVersionException(specLink);
             }
 
+            Map<String, String> imports = new LinkedHashMap<>();
+            Object[] importAnnotations = (Object[]) linkDirective.getValues().get("import");
+            // Parse imports based on name and as arguments
+            for (Object annotation : importAnnotations) {
+                AnnotationInstance annotationInstance = (AnnotationInstance) annotation;
+                String name = (String) annotationInstance.value("name").value();
+
+                String as = name;
+                if (annotationInstance.value("as") != null) {
+                    as = (String) annotationInstance.value("as").value();
+
+                    // Check the format of the as argument, as per the documentation
+                    if (!as.startsWith("@")) {
+                        throw new SchemaBuilderException(String.format(
+                                "Argument as %s for the name %s must start with '@'.", as, name));
+                    }
+                }
+                imports.put(name, as);
+            }
+
             // We only support Federation 2.0
             if (isVersionGreaterThan("2.0", federationVersion)) {
                 throw new UnsupportedFederationVersionException(specLink);
             }
-            if (imports.contains("@composeDirective") && isVersionGreaterThan("2.1", federationVersion)) {
+            if (imports.containsKey("@composeDirective") && isVersionGreaterThan("2.1", federationVersion)) {
                 throw new UnsupportedLinkImportException("@composeDirective");
             }
-            if (imports.contains("@interfaceObject") && isVersionGreaterThan("2.3", federationVersion)) {
+            if (imports.containsKey("@interfaceObject") && isVersionGreaterThan("2.3", federationVersion)) {
                 throw new UnsupportedLinkImportException("@interfaceObject");
             }
-            if (imports.contains("@authenticated") && isVersionGreaterThan("2.5", federationVersion)) {
+            if (imports.containsKey("@authenticated") && isVersionGreaterThan("2.5", federationVersion)) {
                 throw new UnsupportedLinkImportException("@authenticated");
             }
-            if (imports.contains("@requiresScopes") && isVersionGreaterThan("2.5", federationVersion)) {
+            if (imports.containsKey("@requiresScopes") && isVersionGreaterThan("2.5", federationVersion)) {
                 throw new UnsupportedLinkImportException("@requiresScopes");
             }
-            if (imports.contains("@policy") && isVersionGreaterThan("2.6", federationVersion)) {
+            if (imports.containsKey("@policy") && isVersionGreaterThan("2.6", federationVersion)) {
                 throw new UnsupportedLinkImportException("@policy");
             }
 
+            // todo RokM is this even needed
             for (SDLNamedDefinition definition : loadFederationSpecDefinitions(specLink)) {
                 if (definition instanceof ScalarTypeDefinition) {
                     ScalarTypeDefinition scalarType = (ScalarTypeDefinition) definition;
-                    // TODO: Insert logic specific to ScalarTypeDefinition
+                    Reference scalarTypeReference = Scalars.getScalar(scalarType.getName());
+                    if (scalarTypeReference == null) {
+                        throw new SchemaBuilderException(String.format(
+                                "ScalarType %s is defined in the Federation spec %s, but not found in the schema",
+                                scalarType.getName(), specLink));
+                    }
                 } else if (definition instanceof DirectiveDefinition) {
                     DirectiveDefinition directive = (DirectiveDefinition) definition;
                     boolean directiveTypeDefined = schema.getDirectiveTypes().stream()
                             .anyMatch(directiveType -> directiveType.getName().equals(directive.getName()));
                     if (!directiveTypeDefined) {
                         throw new SchemaBuilderException(String.format(
-                                "Directive %s is defined in the Federation spec%s, but not found in the schema",
+                                "Directive \"%s is defined in the Federation spec %s, but not found in the schema",
                                 directive.getName(), specLink));
                     }
                 } else if (definition instanceof EnumTypeDefinition) {
                     EnumTypeDefinition enumType = (EnumTypeDefinition) definition;
-                    // TODO: Insert logic specific to EnumTypeDefinition
+                    boolean enumTypeDefined = schema.getEnums().containsKey(enumType.getName());
+                    if (!enumTypeDefined) {
+                        throw new SchemaBuilderException(String.format(
+                                "EnumType \"%s is defined in the Federation spec %s, but not found in the schema",
+                                enumType.getName(), specLink));
+                    }
                 }
             }
+
+            imports.forEach((name, as) -> {
+                            // todo RokM check as
+            //                                // Check the format of the as argument, as per the documentation
+            //                    if (as.startsWith("@")) {
+            //                        throw new SchemaBuilderException(String.format(
+            //                                "Argument as %s for the name %s must not start with '@'.", as, name));
+            //                    }
+            //                    if (as.contains("__")) {
+            //                        throw new SchemaBuilderException(String.format(
+            //                                "Argument as %s for the name %s must not contain the namespace separator '__'.",
+            //                                as, name));
+            //                    }
+            //                    if (as.endsWith("_")) {
+            //                        throw new SchemaBuilderException(String.format(
+            //                                "Argument as %s for the name %s must not end with an underscore.", as, name));
+            //                    }
+            });
         }
 
         // todo RokM rename scalars and directive definitions if they are located inside import, Add "federation__"
