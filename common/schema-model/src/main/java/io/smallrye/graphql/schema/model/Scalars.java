@@ -191,7 +191,6 @@ public class Scalars {
         populateScalar(Void.class.getName(), VOID, Void.class.getName());
         populateScalar(void.class.getName(), VOID, Void.class.getName());
 
-        // todo RokM not sure if this check is okay, should Config be used instead?
         if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
             populateScalar(FieldSet.class.getName(), FIELD_SET, FieldSet.class.getName());
             populateScalar(Import.class.getName(), IMPORT, Import.class.getName());
