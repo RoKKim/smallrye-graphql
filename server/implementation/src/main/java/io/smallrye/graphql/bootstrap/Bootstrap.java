@@ -301,7 +301,7 @@ public class Bootstrap {
 
     private void createGraphQLDirectiveType(DirectiveType directiveType) {
         GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
-                .name(directiveType.getName())
+                .name(linkProcessor.newName(directiveType.getName(), true))
                 .description(directiveType.getDescription());
         for (String location : directiveType.getLocations()) {
             directiveBuilder.validLocation(DirectiveLocation.valueOf(location));
@@ -444,7 +444,7 @@ public class Bootstrap {
 
     private void createGraphQLEnumType(EnumType enumType) {
         GraphQLEnumType.Builder enumBuilder = GraphQLEnumType.newEnum()
-                .name(enumType.getName())
+                .name(linkProcessor.newName(enumType.getName(), false))
                 .description(enumType.getDescription());
         // Directives
         if (enumType.hasDirectiveInstances()) {
@@ -678,9 +678,9 @@ public class Bootstrap {
 
     private GraphQLDirective createGraphQLDirectiveFrom(DirectiveInstance directiveInstance) {
         DirectiveType directiveType = directiveInstance.getType();
-        GraphQLDirective.Builder directive = GraphQLDirective.newDirective();
-        directive.name(directiveType.getName());
-        directive.repeatable(directiveType.isRepeatable());
+        GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
+                .name(linkProcessor.newName(directiveType.getName(), true))
+                .repeatable(directiveType.isRepeatable());
         for (Entry<String, Object> entry : directiveInstance.getValues().entrySet()) {
             String argumentName = entry.getKey();
             DirectiveArgument argumentType = directiveType.argumentType(argumentName);
@@ -705,7 +705,7 @@ public class Bootstrap {
                 argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argumentType));
             }
 
-            directive.argument(argumentBuilder.build());
+            directiveBuilder.argument(argumentBuilder.build());
         }
 
         for (String argumentName : directiveType.argumentNames()) {
@@ -729,11 +729,11 @@ public class Bootstrap {
                     argumentBuilder = argumentBuilder.defaultValueProgrammatic(sanitizeDefaultValue(argumentType));
                 }
 
-                directive.argument(argumentBuilder.build());
+                directiveBuilder.argument(argumentBuilder.build());
             }
         }
 
-        return directive.build();
+        return directiveBuilder.build();
     }
 
     private GraphQLFieldDefinition createGraphQLFieldDefinitionFromBatchOperation(String operationTypeName,
@@ -1013,7 +1013,22 @@ public class Bootstrap {
     }
 
     private GraphQLScalarType getCorrectScalarType(Reference fieldReference) {
-        return GraphQLScalarTypes.getScalarByName(fieldReference.getName());
+        GraphQLScalarType graphQLScalarType = GraphQLScalarTypes.getScalarByName(fieldReference.getName());
+        String newName = linkProcessor.newName(fieldReference.getName(), false);
+        if (fieldReference.getName().equals(newName)) {
+            // If the field name equals the processed name, simply return the static scalar type
+            return graphQLScalarType;
+        } else {
+            GraphQLScalarType newGraphQLScalarType = GraphQLScalarTypes.getScalarByName(newName);
+            if (newGraphQLScalarType == null) {
+                // If the processed name does not yet exist, create a new one and register it
+                newGraphQLScalarType = GraphQLScalarType.newScalar(graphQLScalarType)
+                        .name(newName)
+                        .build();
+                GraphQLScalarTypes.registerCustomScalar(newName, fieldReference.getClassName(), newGraphQLScalarType);
+            }
+            return newGraphQLScalarType;
+        }
     }
 
     private List<GraphQLArgument> createGraphQLArguments(List<Argument> arguments) {

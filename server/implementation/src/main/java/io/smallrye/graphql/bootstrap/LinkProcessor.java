@@ -1,29 +1,34 @@
 package io.smallrye.graphql.bootstrap;
 
-import java.lang.module.ModuleDescriptor;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import org.jboss.jandex.AnnotationInstance;
-
 import com.apollographql.federation.graphqljava.directives.LinkDirectiveProcessor;
 import com.apollographql.federation.graphqljava.exceptions.UnsupportedFederationVersionException;
 import com.apollographql.federation.graphqljava.exceptions.UnsupportedLinkImportException;
-
 import graphql.schema.idl.TypeDefinitionRegistry;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.Schema;
+import io.smallrye.graphql.spi.config.Config;
+import org.jboss.jandex.AnnotationInstance;
+
+import java.lang.module.ModuleDescriptor;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class LinkProcessor {
 
     private String specUrl;
     private String namespace;
+    private final Map<String, String> imports = new LinkedHashMap<>();
 
     private static final Pattern FEDERATION_VERSION_PATTERN = Pattern.compile("/v([\\d.]+)$");
+    private static final Set<String> BUILT_IN_SCALARS = new HashSet<>(
+            Arrays.asList("String", "Boolean", "Int", "Float", "ID"));
 
     public String getSpecUrl() {
         return specUrl;
@@ -33,10 +38,14 @@ public class LinkProcessor {
         return namespace;
     }
 
+    public Map<String, String> getImports() {
+        return imports;
+    }
+
     /**
      * This method is roughly based on the
-     * {@link LinkDirectiveProcessor#loadFederationImportedDefinitions(TypeDefinitionRegistry)}
-     * method, but since it only accepts {@link TypeDefinitionRegistry} as an argument, it is not directly usable here.
+     * {@link LinkDirectiveProcessor#loadFederationImportedDefinitions(TypeDefinitionRegistry)} method, but since it
+     * only accepts {@link TypeDefinitionRegistry} as an argument, it is not directly usable here.
      */
     public void createLinkImportedTypes(Schema schema) {
         List<DirectiveInstance> linkDirectives = schema.getDirectiveInstances().stream()
@@ -80,20 +89,20 @@ public class LinkProcessor {
                 // Check the format of the as argument, as per the documentation
                 if (namespace.startsWith("@")) {
                     throw new RuntimeException(String.format(
-                            "Argument as %s for Federation spec %s must not start with '@'.", namespace, specUrl));
+                            "Argument as %s for Federation spec %s must not start with '@'", namespace, specUrl));
                 }
                 if (namespace.contains("__")) {
                     throw new RuntimeException(String.format(
-                            "Argument as %s for Federation spec %s must not contain the namespace separator '__'.",
+                            "Argument as %s for Federation spec %s must not contain the namespace separator '__'",
                             namespace, specUrl));
                 }
                 if (namespace.endsWith("_")) {
                     throw new RuntimeException(String.format(
-                            "Argument as %s for Federation spec %s must not end with an underscore.", namespace, specUrl));
+                            "Argument as %s for Federation spec %s must not end with an underscore", namespace,
+                            specUrl));
                 }
             }
 
-            Map<String, String> imports = new LinkedHashMap<>();
             Object[] importAnnotations = (Object[]) linkDirective.getValues().get("import");
             // Parse imports based on name and as arguments
             for (Object annotation : importAnnotations) {
@@ -102,6 +111,12 @@ public class LinkProcessor {
                 String importAs = importName;
                 if (annotationInstance.value("as") != null) {
                     importAs = (String) annotationInstance.value("as").value();
+                    if (importName.startsWith("@") && !importAs.startsWith("@")) {
+                        throw new RuntimeException(String.format(
+                                "Directive import %s for Federation spec %s starts with '@' so as %s must also start " +
+                                        "with '@'",
+                                importName, specUrl, importAs));
+                    }
                 }
                 imports.put(importName, importAs);
             }
@@ -125,39 +140,6 @@ public class LinkProcessor {
             if (imports.containsKey("@policy") && isVersionGreaterThan("2.6", federationVersion)) {
                 throw new UnsupportedLinkImportException("@policy");
             }
-
-            // todo RokM remove
-//            List<SDLNamedDefinition> specImportedDefinitions = FederationDirectives.loadFederationSpecDefinitions(
-//                    specUrl);
-//            // Simply check if we have all the definitions needed according to the Federation spec
-//            for (SDLNamedDefinition definition : specImportedDefinitions) {
-//                if (definition instanceof ScalarTypeDefinition) {
-//                    ScalarTypeDefinition scalarType = (ScalarTypeDefinition) definition;
-//                    Reference scalarTypeReference = Scalars.getScalar(scalarType.getName());
-//                    if (scalarTypeReference == null) {
-//                        throw new RuntimeException(String.format(
-//                                "ScalarType %s is defined in the Federation spec %s, but not found in the schema",
-//                                scalarType.getName(), specUrl));
-//                    }
-//                } else if (definition instanceof DirectiveDefinition) {
-//                    DirectiveDefinition directive = (DirectiveDefinition) definition;
-//                    boolean directiveTypeDefined = schema.getDirectiveTypes().stream()
-//                            .anyMatch(directiveType -> directiveType.getName().equals(directive.getName()));
-//                    if (!directiveTypeDefined) {
-//                        throw new RuntimeException(String.format(
-//                                "Directive \"%s is defined in the Federation spec %s, but not found in the schema",
-//                                directive.getName(), specUrl));
-//                    }
-//                } else if (definition instanceof EnumTypeDefinition) {
-//                    EnumTypeDefinition enumType = (EnumTypeDefinition) definition;
-//                    boolean enumTypeDefined = schema.getEnums().containsKey(enumType.getName());
-//                    if (!enumTypeDefined) {
-//                        throw new RuntimeException(String.format(
-//                                "EnumType \"%s is defined in the Federation spec %s, but not found in the schema",
-//                                enumType.getName(), specUrl));
-//                    }
-//                }
-//            }
         }
     }
 
@@ -165,5 +147,38 @@ public class LinkProcessor {
         ModuleDescriptor.Version v1 = ModuleDescriptor.Version.parse(version1);
         ModuleDescriptor.Version v2 = ModuleDescriptor.Version.parse(version2);
         return v1.compareTo(v2) > 0;
+    }
+
+    public String newName(String name, boolean isDirective) {
+        if (Config.get().isFederationEnabled()) {
+            String key;
+            if (isDirective) {
+                key = "@" + name;
+            } else {
+                key = name;
+                if (BUILT_IN_SCALARS.contains(key)) {
+                    // We do not want to rename built-in types
+                    return name;
+                }
+            }
+
+            if (imports.containsKey(key)) {
+                String newName = imports.get(key);
+                if (isDirective) {
+                    return newName.substring(1);
+                } else {
+                    return newName;
+                }
+            } else {
+                if (name.equals("Import") || name.equals("Purpose")) {
+                    return "link__" + name;
+                } else {
+                    // apply default namespace
+                    return "federation__" + name;
+                }
+            }
+        } else {
+            return name;
+        }
     }
 }
