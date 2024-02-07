@@ -46,6 +46,7 @@ import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLUnionType;
 import io.smallrye.graphql.api.Directive;
+import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.api.federation.Key;
 import io.smallrye.graphql.api.federation.Key.Keys;
 import io.smallrye.graphql.bootstrap.Bootstrap;
@@ -239,7 +240,7 @@ class SchemaTest {
         System.setProperty("smallrye.graphql.federation.enabled", "true");
         try {
             GraphQLSchema graphQLSchema = createGraphQLSchema(Repeatable.class, Directive.class, Key.class, Keys.class,
-                    TestTypeWithFederation.class, FederationTestApi.class);
+                    FieldSet.class, TestTypeWithFederation.class, FederationTestApi.class);
 
             GraphQLDirective keyDirective = graphQLSchema.getDirective("key");
             assertEquals("key", keyDirective.getName());
