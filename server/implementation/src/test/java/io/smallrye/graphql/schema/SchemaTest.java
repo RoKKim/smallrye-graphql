@@ -4,7 +4,6 @@ import static graphql.Scalars.GraphQLString;
 import static graphql.introspection.Introspection.DirectiveLocation.INTERFACE;
 import static graphql.introspection.Introspection.DirectiveLocation.OBJECT;
 import static java.util.Objects.requireNonNull;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -22,6 +21,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -46,6 +46,7 @@ import graphql.schema.GraphQLScalarType;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLUnionType;
 import io.smallrye.graphql.api.Directive;
+import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.api.federation.Key;
 import io.smallrye.graphql.api.federation.Key.Keys;
 import io.smallrye.graphql.bootstrap.Bootstrap;
@@ -100,8 +101,7 @@ class SchemaTest {
         assertEquals("intArrayTestDirective", intArrayTestDirective.getName());
         GraphQLArgument argument = intArrayTestDirective.getArgument("value");
         assertEquals("value", argument.getName());
-        List<Object> expectedArgument = Arrays.asList(1, 2, 3);
-        assertEquals(expectedArgument, argument.toAppliedArgument().getValue());
+        assertEquals(Arrays.asList(1, 2, 3), argument.toAppliedArgument().getValue());
 
         GraphQLFieldDefinition valueField = testTypeWithDirectives.getFieldDefinition("value");
         GraphQLDirective fieldDirectiveInstance = valueField.getDirective("fieldDirective");
@@ -240,7 +240,7 @@ class SchemaTest {
         System.setProperty("smallrye.graphql.federation.enabled", "true");
         try {
             GraphQLSchema graphQLSchema = createGraphQLSchema(Repeatable.class, Directive.class, Key.class, Keys.class,
-                    TestTypeWithFederation.class, FederationTestApi.class);
+                    FieldSet.class, TestTypeWithFederation.class, FederationTestApi.class);
 
             GraphQLDirective keyDirective = graphQLSchema.getDirective("key");
             assertEquals("key", keyDirective.getName());
@@ -253,7 +253,7 @@ class SchemaTest {
                     keyDirective.getDescription());
             assertEquals(EnumSet.of(OBJECT, INTERFACE), keyDirective.validLocations());
             assertEquals(2, keyDirective.getArguments().size());
-            assertEquals("String",
+            assertEquals("FieldSet",
                     ((GraphQLScalarType) ((GraphQLNonNull) keyDirective.getArgument("fields").getType()).getWrappedType())
                             .getName());
             assertEquals("Boolean",
@@ -328,8 +328,7 @@ class SchemaTest {
     @Test
     void testSchemasWithRolesAllowedDirectives() {
         GraphQLSchema graphQLSchema = createGraphQLSchema(Customer.class, RolesAllowed.class, RolesSchema1.class,
-                RolesSchema2.class,
-                RolesSchema3.class);
+                RolesSchema2.class, RolesSchema3.class);
 
         // QUERY ROOT
         GraphQLObjectType queryRoot = graphQLSchema.getQueryType();
@@ -401,7 +400,9 @@ class SchemaTest {
         assertEquals(2, graphQLDirective.getArguments().size());
         assertEquals("fields", graphQLDirective.getArguments().get(0).getName());
         assertEquals("resolvable", graphQLDirective.getArguments().get(1).getName());
-        assertEquals(fieldsValue, graphQLDirective.getArguments().get(0).toAppliedArgument().getArgumentValue().getValue());
+        assertEquals(fieldsValue,
+                ((Map<?, ?>) graphQLDirective.getArguments().get(0).toAppliedArgument().getArgumentValue().getValue())
+                        .get("value"));
         assertEquals(resolvableValue, graphQLDirective.getArguments().get(1).toAppliedArgument().getArgumentValue().getValue());
         assertEquals(true, graphQLDirective.getArguments().get(1).getArgumentDefaultValue().getValue());
     }

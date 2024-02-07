@@ -191,12 +191,11 @@ public class Scalars {
         populateScalar(Void.class.getName(), VOID, Void.class.getName());
         populateScalar(void.class.getName(), VOID, Void.class.getName());
 
-        if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
-            populateScalar(FieldSet.class.getName(), FIELD_SET, FieldSet.class.getName());
-            populateScalar(Import.class.getName(), IMPORT, Import.class.getName());
-            populateScalar(PolicyItem.class.getName(), POLICY, PolicyItem.class.getName());
-            populateScalar(ScopeItem.class.getName(), SCOPE, ScopeItem.class.getName());
-        }
+        // Federation
+        populateScalar(FieldSet.class.getName(), FIELD_SET, FieldSet.class.getName());
+        populateScalar(Import.class.getName(), IMPORT, Import.class.getName());
+        populateScalar(PolicyItem.class.getName(), POLICY, PolicyItem.class.getName());
+        populateScalar(ScopeItem.class.getName(), SCOPE, ScopeItem.class.getName());
     }
 
     private static void populateScalar(String className, String scalarName) {

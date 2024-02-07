@@ -1,5 +1,6 @@
 package org.acme;
 
+import io.smallrye.graphql.api.federation.FieldSet;
 import io.smallrye.graphql.api.federation.Key;
 
 @Key(fields = @FieldSet("id"))
