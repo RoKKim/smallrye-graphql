@@ -20,7 +20,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -101,8 +100,7 @@ class SchemaTest {
         assertEquals("intArrayTestDirective", intArrayTestDirective.getName());
         GraphQLArgument argument = intArrayTestDirective.getArgument("value");
         assertEquals("value", argument.getName());
-        List<Object> expectedArgument = Arrays.asList(1, 2, 3);
-        assertEquals(expectedArgument, argument.toAppliedArgument().getValue());
+        assertEquals(Arrays.asList(1, 2, 3), argument.toAppliedArgument().getValue());
 
         GraphQLFieldDefinition valueField = testTypeWithDirectives.getFieldDefinition("value");
         GraphQLDirective fieldDirectiveInstance = valueField.getDirective("fieldDirective");
@@ -403,7 +401,8 @@ class SchemaTest {
         assertEquals("fields", graphQLDirective.getArguments().get(0).getName());
         assertEquals("resolvable", graphQLDirective.getArguments().get(1).getName());
         assertEquals(fieldsValue,
-                ((Map<?, ?>) graphQLDirective.getArguments().get(0).toAppliedArgument().getArgumentValue().getValue()).get("value"));
+                ((Map<?, ?>) graphQLDirective.getArguments().get(0).toAppliedArgument().getArgumentValue().getValue())
+                        .get("value"));
         assertEquals(resolvableValue, graphQLDirective.getArguments().get(1).toAppliedArgument().getArgumentValue().getValue());
         assertEquals(true, graphQLDirective.getArguments().get(1).getArgumentDefaultValue().getValue());
     }

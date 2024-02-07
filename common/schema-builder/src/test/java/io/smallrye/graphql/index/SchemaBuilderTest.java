@@ -15,6 +15,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -163,7 +164,7 @@ public class SchemaBuilderTest {
         DirectiveInstance typeDirectiveInstance = movieDirectives.get(0);
         assertNotNull(typeDirectiveInstance);
         assertEquals(someDirective, typeDirectiveInstance.getType());
-        assertArrayEquals(new String[] { "foo", "bar" }, (Object[]) typeDirectiveInstance.getValue("value"));
+        assertEquals(Arrays.asList("foo", "bar"), typeDirectiveInstance.getValue("value"));
 
         // check directive instances on field
         Field releaseDate = movie.getFields().get("releaseDate");
