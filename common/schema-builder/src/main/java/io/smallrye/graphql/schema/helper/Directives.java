@@ -86,10 +86,10 @@ public class Directives {
 
     private Object valueObject(AnnotationValue value) {
         if (value.kind() == ARRAY) {
-            List<AnnotationValue> annotationValues = value.asArrayList();
-            List<Object> objects = new ArrayList<>();
-            for (AnnotationValue annotationValue : annotationValues) {
-                objects.add(valueObject(annotationValue));
+            AnnotationValue[] annotationValues = (AnnotationValue[]) value.value();
+            Object[] objects = new Object[annotationValues.length];
+            for (int i = 0; i < annotationValues.length; i++) {
+                objects[i] = valueObject(annotationValues[i]);
             }
             return objects;
         } else if (value.kind() == NESTED) {

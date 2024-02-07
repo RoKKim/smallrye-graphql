@@ -164,7 +164,7 @@ public class SchemaBuilderTest {
         DirectiveInstance typeDirectiveInstance = movieDirectives.get(0);
         assertNotNull(typeDirectiveInstance);
         assertEquals(someDirective, typeDirectiveInstance.getType());
-        assertEquals(Arrays.asList("foo", "bar"), typeDirectiveInstance.getValue("value"));
+        assertArrayEquals(new String[] { "foo", "bar" }, (Object[]) typeDirectiveInstance.getValue("value"));
 
         // check directive instances on field
         Field releaseDate = movie.getFields().get("releaseDate");
