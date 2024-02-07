@@ -11,12 +11,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.jboss.jandex.AnnotationInstance;
-
 import com.apollographql.federation.graphqljava.directives.LinkDirectiveProcessor;
 import com.apollographql.federation.graphqljava.exceptions.UnsupportedFederationVersionException;
 
 import graphql.schema.idl.TypeDefinitionRegistry;
+import io.smallrye.graphql.scalar.federation.ImportCoercing;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.Schema;
 import io.smallrye.graphql.spi.config.Config;
@@ -90,6 +89,10 @@ public class LinkProcessor {
             } catch (Exception e) {
                 throw new UnsupportedFederationVersionException(specUrl);
             }
+            // We only support Federation 2.0
+            if (isVersionGreaterThan("2.0", federationVersion)) {
+                throw new UnsupportedFederationVersionException(specUrl);
+            }
 
             if (linkDirective.getValues().get("as") != null) {
                 namespace = (String) linkDirective.getValues().get("as");
@@ -110,27 +113,18 @@ public class LinkProcessor {
                 }
             }
 
-            Object[] importAnnotations = (Object[]) linkDirective.getValues().get("import");
-            // Parse imports based on name and as arguments
-            for (Object annotation : importAnnotations) {
-                AnnotationInstance annotationInstance = (AnnotationInstance) annotation;
-                String importName = (String) annotationInstance.value("name").value();
-                String importAs = importName;
-                if (annotationInstance.value("as") != null) {
-                    importAs = (String) annotationInstance.value("as").value();
-                    if (importName.startsWith("@") && !importAs.startsWith("@")) {
-                        throw new RuntimeException(String.format(
-                                "Directive import %s for Federation spec %s starts with '@' so as %s must also start " +
-                                        "with '@'",
-                                importName, specUrl, importAs));
+            ImportCoercing importCoercing = new ImportCoercing();
+            Map<String, String> imports = new LinkedHashMap<>();
+            for (Object _import : (Object[]) linkDirective.getValues().get("import")) {
+                Object importValue = importCoercing.parseValue(_import);
+                if (importValue != null) {
+                    if (importValue instanceof String) {
+                        imports.put((String) importValue, (String) importValue);
+                    } else if (importValue instanceof Map) {
+                        Map<?, ?> map = (Map<?, ?>) importValue;
+                        imports.put((String) map.get("name"), (String) map.get("as"));
                     }
                 }
-                imports.put(importName, importAs);
-            }
-
-            // We only support Federation 2.0
-            if (isVersionGreaterThan("2.0", federationVersion)) {
-                throw new UnsupportedFederationVersionException(specUrl);
             }
             for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
                 validateDirectiveSupport(imports, federationVersion, directiveInfo.getKey(), directiveInfo.getValue());
@@ -138,8 +132,8 @@ public class LinkProcessor {
         }
     }
 
-    private void validateDirectiveSupport(
-            Map<String, String> imports, String version, String directiveName, String minVersion) {
+    private void validateDirectiveSupport(Map<String, String> imports, String version, String directiveName,
+            String minVersion) {
         if (imports.containsKey(directiveName) && isVersionGreaterThan(minVersion, version)) {
             throw new RuntimeException(String.format("Federation v%s feature %s imported using old Federation v%s " +
                     "version", minVersion, directiveName, version));

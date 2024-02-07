@@ -2,11 +2,7 @@ package io.smallrye.graphql.scalar.federation;
 
 import static io.smallrye.graphql.SmallRyeGraphQLServerMessages.msg;
 
-import java.util.HashMap;
 import java.util.Map;
-
-import org.jboss.jandex.AnnotationInstance;
-import org.jboss.jandex.DotName;
 
 import graphql.language.ObjectField;
 import graphql.language.ObjectValue;
@@ -16,30 +12,35 @@ import graphql.schema.Coercing;
 import io.smallrye.graphql.api.federation.link.Import;
 
 public class ImportCoercing implements Coercing<Object, Object> {
-    private static final DotName IMPORT = DotName.createSimple(Import.class.getName());
+
+    private static String typeName(Object input) {
+        if (input == null) {
+            return "null";
+        }
+        return input.getClass().getSimpleName();
+    }
 
     private Object convertImpl(Object input) {
-        if (input instanceof AnnotationInstance) {
-            AnnotationInstance annotationInstance = (AnnotationInstance) input;
-            if (IMPORT.equals(annotationInstance.name())) {
-                String name = (String) annotationInstance.value("name").value();
-                String as;
-                if (annotationInstance.value("as") != null) {
-                    as = (String) annotationInstance.value("as").value();
-                    if (name.equals(as)) {
-                        return name;
+        if (input instanceof Map) {
+            Object name = ((Map<?, ?>) input).get("name");
+            if (name instanceof String) {
+                Object as = ((Map<?, ?>) input).get("as");
+                if (as != null) {
+                    if (as instanceof String) {
+                        if (name.equals(as)) {
+                            return name;
+                        }
+                        return Map.of("name", name, "as", as);
+                    } else {
+                        throw new RuntimeException("Can not parse a String from [" + typeName(as) + "]");
                     }
-                    Map<String, Object> result = new HashMap<>();
-                    result.put("name", name);
-                    result.put("as", as);
-                    return result;
                 }
                 return name;
             } else {
-                throw new RuntimeException("Can not parse annotation " + annotationInstance.name() + " to Import");
+                throw new RuntimeException("Can not parse a String from [" + typeName(name) + "]");
             }
         } else {
-            throw new RuntimeException("Can not parse a Import from [" + input.toString() + "]");
+            throw new RuntimeException("Can not parse a Import from [" + typeName(input) + "]");
         }
     }
 
