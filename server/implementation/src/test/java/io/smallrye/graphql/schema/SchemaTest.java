@@ -20,7 +20,9 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -252,7 +254,7 @@ class SchemaTest {
                     keyDirective.getDescription());
             assertEquals(EnumSet.of(OBJECT, INTERFACE), keyDirective.validLocations());
             assertEquals(2, keyDirective.getArguments().size());
-            assertEquals("String",
+            assertEquals("FieldSet",
                     ((GraphQLScalarType) ((GraphQLNonNull) keyDirective.getArgument("fields").getType()).getWrappedType())
                             .getName());
             assertEquals("Boolean",
@@ -400,7 +402,8 @@ class SchemaTest {
         assertEquals(2, graphQLDirective.getArguments().size());
         assertEquals("fields", graphQLDirective.getArguments().get(0).getName());
         assertEquals("resolvable", graphQLDirective.getArguments().get(1).getName());
-        assertEquals(fieldsValue, graphQLDirective.getArguments().get(0).toAppliedArgument().getArgumentValue().getValue());
+        assertEquals(fieldsValue,
+                ((Map<?, ?>) graphQLDirective.getArguments().get(0).toAppliedArgument().getArgumentValue().getValue()).get("value"));
         assertEquals(resolvableValue, graphQLDirective.getArguments().get(1).toAppliedArgument().getArgumentValue().getValue());
         assertEquals(true, graphQLDirective.getArguments().get(1).getArgumentDefaultValue().getValue());
     }
