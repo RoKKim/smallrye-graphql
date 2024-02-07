@@ -27,8 +27,7 @@ import io.smallrye.graphql.api.federation.link.Link.Links;
 @Experimental("SmallRye GraphQL Federation is still subject to change.")
 public @interface Link {
     public static final String FEDERATION_SPEC_URL = "https://specs.apollo.dev/federation";
-    // todo RokM raise to 2.6 once federation-jvm supports it, otherwise it will throw an error UnsupportedFederationVersionException
-    public static final String FEDERATION_SPEC_LATEST_VER = "2.5";
+    public static final String FEDERATION_SPEC_LATEST_VER = "2.7";
     public static final String FEDERATION_SPEC_LATEST_URL = FEDERATION_SPEC_URL + "/v" + FEDERATION_SPEC_LATEST_VER;
 
     @NonNull

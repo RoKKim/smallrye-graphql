@@ -1,14 +1,5 @@
 package io.smallrye.graphql.bootstrap;
 
-import com.apollographql.federation.graphqljava.directives.LinkDirectiveProcessor;
-import com.apollographql.federation.graphqljava.exceptions.UnsupportedFederationVersionException;
-import com.apollographql.federation.graphqljava.exceptions.UnsupportedLinkImportException;
-import graphql.schema.idl.TypeDefinitionRegistry;
-import io.smallrye.graphql.schema.model.DirectiveInstance;
-import io.smallrye.graphql.schema.model.Schema;
-import io.smallrye.graphql.spi.config.Config;
-import org.jboss.jandex.AnnotationInstance;
-
 import java.lang.module.ModuleDescriptor;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -20,6 +11,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.jboss.jandex.AnnotationInstance;
+
+import com.apollographql.federation.graphqljava.directives.LinkDirectiveProcessor;
+import com.apollographql.federation.graphqljava.exceptions.UnsupportedFederationVersionException;
+
+import graphql.schema.idl.TypeDefinitionRegistry;
+import io.smallrye.graphql.schema.model.DirectiveInstance;
+import io.smallrye.graphql.schema.model.Schema;
+import io.smallrye.graphql.spi.config.Config;
+
 public class LinkProcessor {
 
     private String specUrl;
@@ -27,6 +28,12 @@ public class LinkProcessor {
     private final Map<String, String> imports = new LinkedHashMap<>();
 
     private static final Pattern FEDERATION_VERSION_PATTERN = Pattern.compile("/v([\\d.]+)$");
+    private static final Map<String, String> FEDERATION_DIRECTIVES_VERSION = Map.of(
+            "@composeDirective", "2.1",
+            "@interfaceObject", "2.4",
+            "@authenticated", "2.5",
+            "@requiresScopes", "2.5",
+            "@policy", "2.6");
     private static final Set<String> BUILT_IN_SCALARS = new HashSet<>(
             Arrays.asList("String", "Boolean", "Int", "Float", "ID"));
 
@@ -125,21 +132,17 @@ public class LinkProcessor {
             if (isVersionGreaterThan("2.0", federationVersion)) {
                 throw new UnsupportedFederationVersionException(specUrl);
             }
-            if (imports.containsKey("@composeDirective") && isVersionGreaterThan("2.1", federationVersion)) {
-                throw new UnsupportedLinkImportException("@composeDirective");
+            for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
+                validateDirectiveSupport(imports, federationVersion, directiveInfo.getKey(), directiveInfo.getValue());
             }
-            if (imports.containsKey("@interfaceObject") && isVersionGreaterThan("2.3", federationVersion)) {
-                throw new UnsupportedLinkImportException("@interfaceObject");
-            }
-            if (imports.containsKey("@authenticated") && isVersionGreaterThan("2.5", federationVersion)) {
-                throw new UnsupportedLinkImportException("@authenticated");
-            }
-            if (imports.containsKey("@requiresScopes") && isVersionGreaterThan("2.5", federationVersion)) {
-                throw new UnsupportedLinkImportException("@requiresScopes");
-            }
-            if (imports.containsKey("@policy") && isVersionGreaterThan("2.6", federationVersion)) {
-                throw new UnsupportedLinkImportException("@policy");
-            }
+        }
+    }
+
+    private void validateDirectiveSupport(
+            Map<String, String> imports, String version, String directiveName, String minVersion) {
+        if (imports.containsKey(directiveName) && isVersionGreaterThan(minVersion, version)) {
+            throw new RuntimeException(String.format("Federation v%s feature %s imported using old Federation v%s " +
+                    "version", minVersion, directiveName, version));
         }
     }
 
