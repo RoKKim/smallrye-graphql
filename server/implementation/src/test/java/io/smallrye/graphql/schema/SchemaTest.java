@@ -328,8 +328,7 @@ class SchemaTest {
     @Test
     void testSchemasWithRolesAllowedDirectives() {
         GraphQLSchema graphQLSchema = createGraphQLSchema(Customer.class, RolesAllowed.class, RolesSchema1.class,
-                RolesSchema2.class,
-                RolesSchema3.class);
+                RolesSchema2.class, RolesSchema3.class);
 
         // QUERY ROOT
         GraphQLObjectType queryRoot = graphQLSchema.getQueryType();

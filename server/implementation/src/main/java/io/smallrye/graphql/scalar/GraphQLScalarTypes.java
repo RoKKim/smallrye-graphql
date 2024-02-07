@@ -22,7 +22,6 @@ import io.smallrye.graphql.scalar.time.DateTimeScalar;
 import io.smallrye.graphql.scalar.time.DurationScalar;
 import io.smallrye.graphql.scalar.time.PeriodScalar;
 import io.smallrye.graphql.scalar.time.TimeScalar;
-import io.smallrye.graphql.spi.config.Config;
 
 /**
  * Here we keep all the graphql-java scalars
@@ -101,11 +100,10 @@ public class GraphQLScalarTypes {
 
         mapType(new VoidScalar()); // Void
 
-        if (Config.get().isFederationEnabled()) {
-            mapType(new FieldSetScalar());
-            mapType(new PolicyScalar());
-            mapType(new ScopeScalar());
-        }
+        // Federation
+        mapType(new FieldSetScalar());
+        mapType(new PolicyScalar());
+        mapType(new ScopeScalar());
 
         for (final GraphQLScalarType value : SCALAR_MAP.values()) {
             SCALARS_BY_NAME.put(value.getName(), value);
