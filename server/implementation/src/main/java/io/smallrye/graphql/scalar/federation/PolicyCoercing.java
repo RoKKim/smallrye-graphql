@@ -2,8 +2,7 @@ package io.smallrye.graphql.scalar.federation;
 
 import static io.smallrye.graphql.SmallRyeGraphQLServerMessages.msg;
 
-import org.jboss.jandex.AnnotationInstance;
-import org.jboss.jandex.DotName;
+import java.util.Map;
 
 import graphql.language.StringValue;
 import graphql.language.Value;
@@ -11,18 +10,24 @@ import graphql.schema.Coercing;
 import io.smallrye.graphql.api.federation.policy.PolicyItem;
 
 public class PolicyCoercing implements Coercing<Object, String> {
-    private static final DotName PolicyItem = DotName.createSimple(PolicyItem.class.getName());
+
+    private static String typeName(Object input) {
+        if (input == null) {
+            return "null";
+        }
+        return input.getClass().getSimpleName();
+    }
 
     private String convertImpl(Object input) {
-        if (input instanceof AnnotationInstance) {
-            AnnotationInstance annotationInstance = (AnnotationInstance) input;
-            if (PolicyItem.equals(annotationInstance.name())) {
-                return (String) annotationInstance.value("value").value();
+        if (input instanceof Map) {
+            Object value = ((Map<?, ?>) input).get("value");
+            if (value instanceof String) {
+                return (String) value;
             } else {
-                throw new RuntimeException("Can not parse annotation " + annotationInstance.name() + " to PolicyItem");
+                throw new RuntimeException("Can not parse a String from [" + typeName(value) + "]");
             }
         } else {
-            throw new RuntimeException("Can not parse a PolicyItem from [" + input.toString() + "]");
+            throw new RuntimeException("Can not parse a Policy from [" + typeName(input) + "]");
         }
     }
 
@@ -33,8 +38,7 @@ public class PolicyCoercing implements Coercing<Object, String> {
         try {
             return convertImpl(input);
         } catch (RuntimeException e) {
-            throw msg.coercingSerializeException(PolicyItem.class.getSimpleName(), input.getClass().getSimpleName(),
-                    null);
+            throw msg.coercingSerializeException(PolicyItem.class.getSimpleName(), typeName(input), e);
         }
     }
 
@@ -43,7 +47,7 @@ public class PolicyCoercing implements Coercing<Object, String> {
         try {
             return convertImpl(input);
         } catch (RuntimeException e) {
-            throw msg.coercingParseValueException(PolicyItem.class.getSimpleName(), input.getClass().getSimpleName(), e);
+            throw msg.coercingParseValueException(PolicyItem.class.getSimpleName(), typeName(input), e);
         }
     }
 
@@ -55,7 +59,7 @@ public class PolicyCoercing implements Coercing<Object, String> {
         if (input instanceof StringValue) {
             return ((StringValue) input).getValue();
         } else {
-            throw msg.coercingParseLiteralException(input.getClass().getSimpleName());
+            throw msg.coercingParseLiteralException(typeName(input));
         }
     }
 
