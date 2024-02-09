@@ -112,6 +112,7 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(InterfaceObject.class));
             indexer.index(convertClassToInputStream(Key.class));
             indexer.index(convertClassToInputStream(Link.class));
+            indexer.index(convertClassToInputStream(OneOf.class));
             indexer.index(convertClassToInputStream(Override.class));
             indexer.index(convertClassToInputStream(Policy.class));
             indexer.index(convertClassToInputStream(PolicyGroup.class));
@@ -124,7 +125,6 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(ScopeItem.class));
             indexer.index(convertClassToInputStream(Shareable.class));
             indexer.index(convertClassToInputStream(Tag.class));
-            indexer.index(convertClassToInputStream(OneOf.class));
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
