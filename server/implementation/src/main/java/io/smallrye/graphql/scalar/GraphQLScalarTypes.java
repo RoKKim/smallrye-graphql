@@ -101,11 +101,12 @@ public class GraphQLScalarTypes {
 
         mapType(new VoidScalar()); // Void
 
-        // Federation
-        mapType(new FieldSetScalar());
-        mapType(new ImportScalar());
-        mapType(new PolicyScalar());
-        mapType(new ScopeScalar());
+        if (Boolean.getBoolean("smallrye.graphql.federation.enabled")) {
+            mapType(new FieldSetScalar());
+            mapType(new ImportScalar());
+            mapType(new PolicyScalar());
+            mapType(new ScopeScalar());
+        }
 
         for (final GraphQLScalarType value : SCALAR_MAP.values()) {
             SCALARS_BY_NAME.put(value.getName(), value);

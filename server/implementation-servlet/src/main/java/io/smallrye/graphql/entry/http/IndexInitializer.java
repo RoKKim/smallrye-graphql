@@ -30,6 +30,7 @@ import org.jboss.jandex.Indexer;
 
 import io.smallrye.graphql.api.Deprecated;
 import io.smallrye.graphql.api.Entry;
+import io.smallrye.graphql.api.OneOf;
 import io.smallrye.graphql.api.federation.Authenticated;
 import io.smallrye.graphql.api.federation.ComposeDirective;
 import io.smallrye.graphql.api.federation.Extends;
@@ -100,7 +101,6 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(Repeatable.class));
 
             // directives from the API module
-            // todo RokM add missing
             indexer.index(convertClassToInputStream(Authenticated.class));
             indexer.index(convertClassToInputStream(ComposeDirective.class));
             indexer.index(convertClassToInputStream(Deprecated.class));
@@ -124,6 +124,7 @@ public class IndexInitializer {
             indexer.index(convertClassToInputStream(ScopeItem.class));
             indexer.index(convertClassToInputStream(Shareable.class));
             indexer.index(convertClassToInputStream(Tag.class));
+            indexer.index(convertClassToInputStream(OneOf.class));
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
