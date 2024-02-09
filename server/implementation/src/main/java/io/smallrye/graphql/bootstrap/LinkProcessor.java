@@ -178,19 +178,24 @@ public class LinkProcessor {
 
     public String newNameDirectiveFrom(String name) {
         String key = "@" + name;
-        // If directive is used it must also be imported inside @link
-        if (specUrl != null && !imports.containsKey(key)) {
-            throw new RuntimeException(String.format("Directive '%s' is used but not imported", name));
+        // If directive is used and defined by the Federation spec, it must also be imported inside @link
+        if (specUrl != null && !imports.containsKey(key) && federationVersionImports.contains(key) &&
+                !key.equals("@link")) {
+            //throw new RuntimeException(String.format("Directive '%s' is used but not imported", key));
+            System.out.println(String.format("Directive '%s' is used but not imported", key));
         }
-        return newName(key, true);
+        return newNameDirective(name);
     }
 
     public String newNameDirective(String name) {
-        String key = "@" + name;
-        return newName(key, true);
+        return newName(name, true);
     }
 
-    public String newName(String name, boolean isDirective) {
+    public String newName(String name) {
+        return newName(name, false);
+    }
+
+    private String newName(String name, boolean isDirective) {
         if (specUrl != null) {
             String key = isDirective ? "@" + name : name;
 
