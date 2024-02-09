@@ -173,9 +173,7 @@ public class Bootstrap {
     private void generateGraphQLSchema() {
         GraphQLSchema.Builder schemaBuilder = GraphQLSchema.newSchema();
 
-        if (Config.get().isFederationEnabled()) {
-            linkProcessor.createLinkImportedTypes(schema);
-        }
+        linkProcessor.createLinkImportedTypes(schema);
 
         createGraphQLCustomScalarTypes();
         createGraphQLEnumTypes();
@@ -1013,6 +1011,8 @@ public class Bootstrap {
     }
 
     private GraphQLScalarType getCorrectScalarType(Reference fieldReference) {
+        // Since we can rename scalar types using the link directive, but GraphQLScalarTypes has a static definition
+        // of scalar types, we need to check if the scalar type has been renamed and if so, create a new one
         GraphQLScalarType graphQLScalarType = GraphQLScalarTypes.getScalarByName(fieldReference.getName());
         String newName = linkProcessor.newName(fieldReference.getName(), false);
         if (fieldReference.getName().equals(newName)) {
