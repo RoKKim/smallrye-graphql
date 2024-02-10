@@ -97,6 +97,7 @@ public class Directives {
                 .findFirst();
         if (matchingMethod.isPresent()) {
             // If the method name is modified when creating the directive type, we need to use the modified name
+            // e.g. Link._import and Link._for
             MethodInfo method = matchingMethod.get();
             return TypeNameHelper.getMethodName(matchingMethod.get(),
                     Annotations.getAnnotationsForInterfaceField(method));
