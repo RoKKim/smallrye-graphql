@@ -88,7 +88,7 @@ public class LinkProcessor {
                     .map(DirectiveInstance::toString)
                     .collect(Collectors.joining(", "));
             throw new RuntimeException(
-                    "Multiple 'link' directives that import Federation spec found on schema: " + directivesString);
+                    "Multiple @link directives that import Federation spec found on schema: " + directivesString);
         }
 
         DirectiveInstance linkDirective = linkDirectives.get(0);
@@ -111,7 +111,7 @@ public class LinkProcessor {
         processFederationSpecImports(specUrl, federationSpecVersionImports);
         if (!federationSpecVersionImports.contains("@link")) {
             // @link is not allowed to be imported
-            throw new RuntimeException("Import key '@link' should not be imported");
+            throw new RuntimeException("Import key @link should not be imported within @link directive itself");
         }
     }
 
@@ -127,17 +127,19 @@ public class LinkProcessor {
             // Check the format of the as argument, as per the documentation
             if (namespace.startsWith("@")) {
                 throw new RuntimeException(String.format(
-                        "Argument as %s for Federation spec %s must not start with '@'", namespace, specUrl));
+                        "Argument as %s for Federation spec %s on @link directive must not start with '@'", namespace,
+                        specUrl));
             }
             if (namespace.contains("__")) {
                 throw new RuntimeException(String.format(
-                        "Argument as %s for Federation spec %s must not contain the namespace separator '__'",
+                        "Argument as %s for Federation spec %s on @link directive must not contain the namespace " +
+                                "separator '__'",
                         namespace, specUrl));
             }
             if (namespace.endsWith("_")) {
                 throw new RuntimeException(String.format(
-                        "Argument as %s for Federation spec %s must not end with an underscore", namespace,
-                        specUrl));
+                        "Argument as %s for Federation spec %s on @link directive must not end with an underscore",
+                        namespace, specUrl));
             }
         }
     }
@@ -181,8 +183,10 @@ public class LinkProcessor {
                 if ((importName.startsWith("@") && !importAs.startsWith("@")) ||
                         (!importName.startsWith("@") && importAs.startsWith("@"))) {
                     throw new RuntimeException(
-                            String.format("Import name '%s' and alias '%s' must be of the same type: " +
-                                    "either both directives or both types.", importName, importAs));
+                            String.format(
+                                    "Import name '%s' and alias '%s' on on @link directive must be of the same type: " +
+                                            "either both directives or both types.",
+                                    importName, importAs));
                 }
 
                 imports.put(importName, importAs);
@@ -193,8 +197,9 @@ public class LinkProcessor {
     private void validateDirectiveSupport(Map<String, String> imports, String version, String directiveName,
                                           String minVersion) {
         if (imports.containsKey(directiveName) && isVersionGreaterThan(minVersion, version)) {
-            throw new RuntimeException(String.format("Federation v%s feature %s imported using old Federation v%s " +
-                    "version", minVersion, directiveName, version));
+            throw new RuntimeException(
+                    String.format("Federation v%s feature %s imported using old Federation v%s version", minVersion,
+                            directiveName, version));
         }
     }
 
@@ -214,7 +219,8 @@ public class LinkProcessor {
         // If directive is used and defined by the Federation spec, it must also be imported inside @link
         if (specUrl != null && !specImports.containsKey(key) && federationSpecVersionImports.contains(key) &&
                 !key.equals("@link")) {
-            throw new RuntimeException(String.format("Directive '%s' is used but not imported", key));
+            throw new RuntimeException(
+                    String.format("Directive '%s' is used but not imported inside @link directive", key));
         }
         return newNameDirective(name);
     }
