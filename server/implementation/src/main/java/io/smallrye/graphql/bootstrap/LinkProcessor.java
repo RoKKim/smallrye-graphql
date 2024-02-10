@@ -169,7 +169,8 @@ public class LinkProcessor {
         }
         for (Object _import : importsArray) {
             Object parsedImport = IMPORT_COERCING.parseValue(_import);
-            if (parsedImport == null) continue;
+            if (parsedImport == null)
+                continue;
             String importName;
             if (parsedImport instanceof String) {
                 importName = (String) parsedImport;
@@ -195,7 +196,7 @@ public class LinkProcessor {
     }
 
     private void validateDirectiveSupport(Map<String, String> imports, String version, String directiveName,
-                                          String minVersion) {
+            String minVersion) {
         if (imports.containsKey(directiveName) && isVersionGreaterThan(minVersion, version)) {
             throw new RuntimeException(
                     String.format("Federation v%s feature %s imported using old Federation v%s version", minVersion,
