@@ -27,10 +27,11 @@ import io.smallrye.graphql.spi.config.Config;
 public class LinkProcessor {
 
     private String specUrl;
-    private String namespace;
 
+    private final Schema schema;
+    private final Map<String, String> specImports;
     private final Map<String, String> imports;
-    private final List<String> federationVersionImports;
+    private final List<String> federationSpecVersionImports;
 
     private static final Pattern FEDERATION_VERSION_PATTERN = Pattern.compile("/v([\\d.]+)$");
     private static final Map<String, String> FEDERATION_DIRECTIVES_VERSION = Map.of(
@@ -39,10 +40,13 @@ public class LinkProcessor {
             "@authenticated", "2.5",
             "@requiresScopes", "2.5",
             "@policy", "2.6");
+    private static final ImportCoercing IMPORT_COERCING = new ImportCoercing();
 
-    public LinkProcessor() {
+    public LinkProcessor(Schema schema) {
+        this.schema = schema;
         this.imports = new LinkedHashMap<>();
-        this.federationVersionImports = new ArrayList<>();
+        this.specImports = new LinkedHashMap<>();
+        this.federationSpecVersionImports = new ArrayList<>();
     }
 
     /**
@@ -50,123 +54,92 @@ public class LinkProcessor {
      * {@link LinkDirectiveProcessor#loadFederationImportedDefinitions(TypeDefinitionRegistry)} method, but since it
      * only accepts {@link TypeDefinitionRegistry} as an argument, it is not directly usable here.
      */
-    public void createLinkImportedTypes(Schema schema) {
-        // todo RokM probably need to set this to system property
+    public void createLinkImports() {
         if (Config.get().isFederationEnabled()) {
-            List<DirectiveInstance> linkDirectives = schema.getDirectiveInstances().stream()
+            List<DirectiveInstance> specLinkDirectives = new ArrayList<>();
+            List<DirectiveInstance> linkDirectives = new ArrayList<>();
+
+            schema.getDirectiveInstances().stream()
                     .filter(directiveInstance -> "link".equals(directiveInstance.getType().getName()))
                     .filter(directiveInstance -> {
                         Map<String, Object> values = directiveInstance.getValues();
-                        if (values.containsKey("url") && values.get("url") instanceof String) {
-                            String url = (String) values.get("url");
-                            // Find urls that are defining the Federation spec
-                            return url.startsWith("https://specs.apollo.dev/federation/");
-                        }
-                        return false;
+                        return values.containsKey("url") && values.get("url") instanceof String;
                     })
-                    .collect(Collectors.toList());
-
-            // We can only have a single Federation spec link
-            if (linkDirectives.size() > 1) {
-                String directivesString = linkDirectives.stream()
-                        .map(DirectiveInstance::toString)
-                        .collect(Collectors.joining(", "));
-                throw new RuntimeException("Multiple 'link' directives found on schema: " + directivesString);
-            }
-
-            if (!linkDirectives.isEmpty()) {
-                DirectiveInstance linkDirective = linkDirectives.get(0);
-                specUrl = (String) linkDirective.getValues().get("url");
-                final String federationVersion;
-                try {
-                    Matcher matcher = FEDERATION_VERSION_PATTERN.matcher(specUrl);
-                    if (matcher.find()) {
-                        federationVersion = matcher.group(1);
-                    } else {
-                        throw new UnsupportedFederationVersionException(specUrl);
-                    }
-                } catch (Exception e) {
-                    throw new UnsupportedFederationVersionException(specUrl);
-                }
-                // We only support Federation 2.0
-                if (isVersionGreaterThan("2.0", federationVersion)) {
-                    throw new UnsupportedFederationVersionException(specUrl);
-                }
-
-                if (linkDirective.getValues().get("as") != null) {
-                    namespace = (String) linkDirective.getValues().get("as");
-                    // Check the format of the as argument, as per the documentation
-                    if (namespace.startsWith("@")) {
-                        throw new RuntimeException(String.format(
-                                "Argument as %s for Federation spec %s must not start with '@'", namespace, specUrl));
-                    }
-                    if (namespace.contains("__")) {
-                        throw new RuntimeException(String.format(
-                                "Argument as %s for Federation spec %s must not contain the namespace separator '__'",
-                                namespace, specUrl));
-                    }
-                    if (namespace.endsWith("_")) {
-                        throw new RuntimeException(String.format(
-                                "Argument as %s for Federation spec %s must not end with an underscore", namespace,
-                                specUrl));
-                    }
-                }
-
-                // Based on the Federation spec URL, we load the definitions and save them to a separate list
-                federationVersionImports.addAll(
-                        loadFederationSpecDefinitions(specUrl).stream()
-                                .map(definition -> definition instanceof DirectiveDefinition ? "@" + definition.getName()
-                                        : definition.getName())
-                                .collect(Collectors.toList()));
-
-                ImportCoercing importCoercing = new ImportCoercing();
-                for (Object _import : (Object[]) linkDirective.getValues().get("import")) {
-                    Object importValue = importCoercing.parseValue(_import);
-                    if (importValue != null) {
-                        String importName = null;
-                        if (importValue instanceof String) {
-                            importName = (String) importValue;
-                            imports.put(importName, importName);
-                        } else if (importValue instanceof Map) {
-                            Map<?, ?> map = (Map<?, ?>) importValue;
-                            importName = (String) map.get("name");
-                            String importAs = (String) map.get("as");
-
-                            // name and as must be of the same type
-                            if ((importName.startsWith("@") && !importAs.startsWith("@")) ||
-                                    (!importName.startsWith("@") && importAs.startsWith("@"))) {
-                                throw new RuntimeException(
-                                        String.format("Import name '%s' and alias '%s' must be of the same type: " +
-                                                "either both directives or both types.", importName, importAs));
-                            }
-
-                            imports.put(importName, importAs);
+                    .forEach(directiveInstance -> {
+                        String url = (String) directiveInstance.getValues().get("url");
+                        if (url.startsWith("https://specs.apollo.dev/federation/")) {
+                            specLinkDirectives.add(directiveInstance);
+                        } else {
+                            linkDirectives.add(directiveInstance);
                         }
-                        if (!federationVersionImports.contains(importName)) {
-                            // If a key is found in imports but not in federationVersionImports, throw an exception
-                            throw new RuntimeException(
-                                    String.format("Import key '%s' is not present in the Federation spec %s",
-                                            importName, specUrl));
-                        }
-                    }
-                }
-                if (!federationVersionImports.contains("@link")) {
-                    // @link is not allowed to be imported
-                    throw new RuntimeException("Import key '@link' should not be imported");
-                }
-                for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
-                    validateDirectiveSupport(imports, federationVersion, directiveInfo.getKey(),
-                            directiveInfo.getValue());
-                }
-            }
+                    });
+
+            createSpecLinkImports(specLinkDirectives);
+            createLinkImports(linkDirectives);
         }
     }
 
-    private void validateDirectiveSupport(Map<String, String> imports, String version, String directiveName,
-            String minVersion) {
-        if (imports.containsKey(directiveName) && isVersionGreaterThan(minVersion, version)) {
-            throw new RuntimeException(String.format("Federation v%s feature %s imported using old Federation v%s " +
-                    "version", minVersion, directiveName, version));
+    private void createSpecLinkImports(List<DirectiveInstance> linkDirectives) {
+        if (linkDirectives.isEmpty()) {
+            return;
+        }
+        // We can only have a single Federation spec link
+        if (linkDirectives.size() > 1) {
+            String directivesString = linkDirectives.stream()
+                    .map(DirectiveInstance::toString)
+                    .collect(Collectors.joining(", "));
+            throw new RuntimeException(
+                    "Multiple 'link' directives that import Federation spec found on schema: " + directivesString);
+        }
+
+        DirectiveInstance linkDirective = linkDirectives.get(0);
+        specUrl = (String) linkDirective.getValues().get("url");
+        validateNamespace(linkDirective, specUrl);
+
+        String federationVersion = extractFederationVersion(specUrl);
+        // We only support Federation 2.0
+        if (isVersionGreaterThan("2.0", federationVersion)) {
+            throw new UnsupportedFederationVersionException(specUrl);
+        }
+
+        processImports((Object[]) linkDirective.getValues().get("import"), specImports);
+        for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
+            validateDirectiveSupport(specImports, federationVersion, directiveInfo.getKey(),
+                    directiveInfo.getValue());
+        }
+
+        // Based on the Federation spec URL, we load the definitions and save them to a separate list
+        processFederationSpecImports(specUrl, federationSpecVersionImports);
+        if (!federationSpecVersionImports.contains("@link")) {
+            // @link is not allowed to be imported
+            throw new RuntimeException("Import key '@link' should not be imported");
+        }
+    }
+
+    private void createLinkImports(List<DirectiveInstance> linkDirectives) {
+        for (DirectiveInstance linkDirective : linkDirectives) {
+            processImports((Object[]) linkDirective.getValues().get("import"), imports);
+        }
+    }
+
+    private void validateNamespace(DirectiveInstance linkDirective, String specUrl) {
+        if (linkDirective.getValues().get("as") != null) {
+            String namespace = (String) linkDirective.getValues().get("as");
+            // Check the format of the as argument, as per the documentation
+            if (namespace.startsWith("@")) {
+                throw new RuntimeException(String.format(
+                        "Argument as %s for Federation spec %s must not start with '@'", namespace, specUrl));
+            }
+            if (namespace.contains("__")) {
+                throw new RuntimeException(String.format(
+                        "Argument as %s for Federation spec %s must not contain the namespace separator '__'",
+                        namespace, specUrl));
+            }
+            if (namespace.endsWith("_")) {
+                throw new RuntimeException(String.format(
+                        "Argument as %s for Federation spec %s must not end with an underscore", namespace,
+                        specUrl));
+            }
         }
     }
 
@@ -176,13 +149,73 @@ public class LinkProcessor {
         return v1.compareTo(v2) > 0;
     }
 
+    private String extractFederationVersion(String specUrl) {
+        try {
+            Matcher matcher = FEDERATION_VERSION_PATTERN.matcher(specUrl);
+            if (matcher.find()) {
+                return matcher.group(1);
+            } else {
+                throw new UnsupportedFederationVersionException(specUrl);
+            }
+        } catch (Exception e) {
+            throw new UnsupportedFederationVersionException(specUrl);
+        }
+    }
+
+    private void processImports(Object[] importsArray, Map<String, String> imports) {
+        if (importsArray == null) {
+            return;
+        }
+        for (Object _import : importsArray) {
+            Object parsedImport = IMPORT_COERCING.parseValue(_import);
+            if (parsedImport == null) continue;
+            String importName;
+            if (parsedImport instanceof String) {
+                importName = (String) parsedImport;
+                imports.put(importName, importName);
+            } else if (parsedImport instanceof Map) {
+                Map<?, ?> importMap = (Map<?, ?>) parsedImport;
+                importName = (String) importMap.get("name");
+                String importAs = (String) importMap.get("as");
+
+                // name and as must be of the same type
+                if ((importName.startsWith("@") && !importAs.startsWith("@")) ||
+                        (!importName.startsWith("@") && importAs.startsWith("@"))) {
+                    throw new RuntimeException(
+                            String.format("Import name '%s' and alias '%s' must be of the same type: " +
+                                    "either both directives or both types.", importName, importAs));
+                }
+
+                imports.put(importName, importAs);
+            }
+        }
+    }
+
+    private void validateDirectiveSupport(Map<String, String> imports, String version, String directiveName,
+                                          String minVersion) {
+        if (imports.containsKey(directiveName) && isVersionGreaterThan(minVersion, version)) {
+            throw new RuntimeException(String.format("Federation v%s feature %s imported using old Federation v%s " +
+                    "version", minVersion, directiveName, version));
+        }
+    }
+
+    private void processFederationSpecImports(String specUrl, List<String> imports) {
+        imports.addAll(
+                loadFederationSpecDefinitions(specUrl).stream()
+                        .map(definition -> definition instanceof DirectiveDefinition ? "@" + definition.getName()
+                                : definition.getName())
+                        .collect(Collectors.toList()));
+    }
+
     public String newNameDirectiveFrom(String name) {
         String key = "@" + name;
+        if (imports.containsKey(key)) {
+            return newNameDirective(name);
+        }
         // If directive is used and defined by the Federation spec, it must also be imported inside @link
-        if (specUrl != null && !imports.containsKey(key) && federationVersionImports.contains(key) &&
+        if (specUrl != null && !specImports.containsKey(key) && federationSpecVersionImports.contains(key) &&
                 !key.equals("@link")) {
-            //throw new RuntimeException(String.format("Directive '%s' is used but not imported", key));
-            System.out.println(String.format("Directive '%s' is used but not imported", key));
+            throw new RuntimeException(String.format("Directive '%s' is used but not imported", key));
         }
         return newNameDirective(name);
     }
@@ -196,28 +229,27 @@ public class LinkProcessor {
     }
 
     private String newName(String name, boolean isDirective) {
-        if (specUrl != null) {
-            String key = isDirective ? "@" + name : name;
+        if (!Config.get().isFederationEnabled()) {
+            return name;
+        }
 
+        String key = isDirective ? "@" + name : name;
+        if (imports.containsKey(key)) {
+            // Our type can be imported using non-Federation spec @link
+            String newName = imports.get(key);
+            return isDirective ? newName.substring(1) : newName;
+        } else if (federationSpecVersionImports.contains(key) && !key.equals("@link")) {
             // We only wish to rename the types that are defined by the Federation spec (e.g. @key, @external etc.),
-            // but not common and custom types like String, BigInteger, BigDecimal etc.
-            // We also don't want to rename the @link directive.
-            if (!federationVersionImports.contains(key) || key.equals("@link")) {
-                return name;
-            }
-
-            if (imports.containsKey(key)) {
-                String newName = imports.get(key);
-                if (isDirective) {
-                    return newName.substring(1);
-                } else {
-                    return newName;
-                }
+            // but not common and custom types like String, BigInteger, BigDecimal etc. We also don't want to rename
+            // the @link directive.
+            if (specImports.containsKey(key)) {
+                String newName = specImports.get(key);
+                return isDirective ? newName.substring(1) : newName;
             } else {
                 if (name.equals("Import") || name.equals("Purpose")) {
                     return "link__" + name;
                 } else {
-                    // apply default namespace
+                    // Apply default namespace
                     return "federation__" + name;
                 }
             }

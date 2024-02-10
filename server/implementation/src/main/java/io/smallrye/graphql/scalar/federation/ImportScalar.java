@@ -9,7 +9,6 @@ import io.smallrye.graphql.scalar.AbstractScalar;
 public class ImportScalar extends AbstractScalar {
 
     public ImportScalar() {
-        // todo RokM coercing
         super("Import", new ImportCoercing(), Import.class);
     }
 }

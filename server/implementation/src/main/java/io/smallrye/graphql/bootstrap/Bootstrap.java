@@ -121,7 +121,7 @@ public class Bootstrap {
 
     private final ClassloadingService classloadingService = ClassloadingService.get();
 
-    private final LinkProcessor linkProcessor = new LinkProcessor();
+    private final LinkProcessor linkProcessor;
 
     public static GraphQLSchema bootstrap(Schema schema) {
         return bootstrap(schema, false);
@@ -140,6 +140,7 @@ public class Bootstrap {
 
     private Bootstrap(Schema schema, boolean skipInjectionValidation) {
         this.schema = schema;
+        this.linkProcessor = new LinkProcessor(schema);
         // setting `skipInjectionValidation` through a system property is not recommended,
         // but kept for backward compatibility for now
         if (!Boolean.getBoolean("test.skip.injection.validation") && !skipInjectionValidation) {
@@ -173,7 +174,7 @@ public class Bootstrap {
     private void generateGraphQLSchema() {
         GraphQLSchema.Builder schemaBuilder = GraphQLSchema.newSchema();
 
-        linkProcessor.createLinkImportedTypes(schema);
+        linkProcessor.createLinkImports();
 
         createGraphQLCustomScalarTypes();
         createGraphQLEnumTypes();
