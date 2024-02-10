@@ -667,7 +667,7 @@ public class Bootstrap {
     private GraphQLDirective createGraphQLDirectiveFrom(DirectiveInstance directiveInstance) {
         DirectiveType directiveType = directiveInstance.getType();
         GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
-                .name(linkProcessor.newNameDirectiveFrom(directiveType.getName()))
+                .name(linkProcessor.newNameDirective(directiveType.getName()))
                 .repeatable(directiveType.isRepeatable());
         for (Entry<String, Object> entry : directiveInstance.getValues().entrySet()) {
             String argumentName = entry.getKey();

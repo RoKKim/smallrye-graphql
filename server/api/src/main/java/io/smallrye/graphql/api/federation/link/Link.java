@@ -38,13 +38,13 @@ public @interface Link {
     String as() default "";
 
     @Description("A list of elements to import from the foreign schema into the document.")
-    @Name("import")
-    Import[] _import() default {};
+@Name("import")
+Import[] _import() default {};
 
     @Description("An optional purpose for this link. This hints to consumers as to whether they can safely ignore " +
             "metadata described by a foreign schema.")
-    @Name("for")
-    Purpose _for() default Purpose.UNDEFINED;
+@Name("for")
+Purpose _for() default Purpose.UNDEFINED;
 
     @Retention(RUNTIME)
     @interface Links {

@@ -219,20 +219,6 @@ public class LinkProcessor {
                         .collect(Collectors.toList()));
     }
 
-    public String newNameDirectiveFrom(String name) {
-        String key = "@" + name;
-        if (imports.containsKey(key)) {
-            return newNameDirective(name);
-        }
-        // If directive is used and defined by the Federation spec, it must also be imported inside @link
-        if (specUrl != null && !specImports.containsKey(key) && federationSpecVersionImports.contains(key) &&
-                !key.equals("@link")) {
-            throw new RuntimeException(
-                    String.format("Directive %s is used but not imported inside @link directive", key));
-        }
-        return newNameDirective(name);
-    }
-
     public String newNameDirective(String name) {
         return newName(name, true);
     }

@@ -15,6 +15,7 @@ import org.eclipse.microprofile.graphql.Query;
 
 import io.smallrye.graphql.api.federation.link.Import;
 import io.smallrye.graphql.api.federation.link.Link;
+import io.smallrye.graphql.api.federation.link.Purpose;
 
 @GraphQLApi
 @Description("Schema description")
@@ -22,10 +23,12 @@ import io.smallrye.graphql.api.federation.link.Link;
         @Import(name = "@authenticated"),
         @Import(name = "@external"),
         @Import(name = "@inaccessible"),
-        @Import(name = "@policy"),
+        @Import(name = "@policy", as = "@myPolicy"),
+        @Import(name = "@tag", as = "@newTag"),
         @Import(name = "@requires"),
-        @Import(name = "FieldSet")
-})
+        @Import(name = "FieldSet", as = "Field")
+}, _for = Purpose.EXECUTION)
+@Link(url = "https://smallrye.io/custom/v1.0", _import = { @Import(name = "@custom", as = "@smallryeCustom") })
 public class Link6Api {
 
     @Query

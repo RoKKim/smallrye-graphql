@@ -45,7 +45,6 @@ import io.smallrye.graphql.schema.link.Link4Api;
 import io.smallrye.graphql.schema.link.Link5Api;
 import io.smallrye.graphql.schema.link.Link6Api;
 import io.smallrye.graphql.schema.link.Link7Api;
-import io.smallrye.graphql.schema.link.Link8Api;
 
 class SchemaLinkTest extends SchemaTestBase {
 
@@ -107,22 +106,12 @@ class SchemaLinkTest extends SchemaTestBase {
     }
 
     @Test
-    void testSchemaWithMissingImport() {
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> createGraphQLSchema(Directive.class, Link.class, Import.class, Purpose.class, Authenticated.class,
-                        External.class, Inaccessible.class, Policy.class, PolicyGroup.class, PolicyItem.class,
-                        FieldSet.class, Requires.class, Tag.class, Book.class, Link6Api.class));
-        String expectedMessage = "Directive @tag is used but not imported inside @link directive";
-        assertEquals(expectedMessage, exception.getMessage());
-    }
-
-    @Test
     void testSchemaWithImportAs() {
         // Extends and Override are not actually used, this is on purpose
         GraphQLSchema graphQLSchema = createGraphQLSchema(Directive.class, Link.class, Import.class, Purpose.class,
                 Authenticated.class, CustomDirective.class, External.class, Inaccessible.class, Policy.class,
                 PolicyGroup.class, Extends.class, FieldSet.class, Override.class, PolicyItem.class, Requires.class,
-                Tag.class, Book.class, Link7Api.class);
+                Tag.class, Book.class, Link6Api.class);
 
         GraphQLAppliedDirective specLinkDirective = graphQLSchema.getSchemaAppliedDirectives().get(0);
         assertEquals("link", specLinkDirective.getName());
@@ -146,7 +135,7 @@ class SchemaLinkTest extends SchemaTestBase {
         GraphQLSchema graphQLSchema = createGraphQLSchema(Directive.class, Link.class, Import.class, Purpose.class,
                 Authenticated.class, CustomDirective.class, External.class, Inaccessible.class, Policy.class,
                 PolicyGroup.class, Extends.class, FieldSet.class, Override.class, PolicyItem.class, Requires.class,
-                Tag.class, Book.class, Link8Api.class);
+                Tag.class, Book.class, Link7Api.class);
 
         GraphQLAppliedDirective specLinkDirective = graphQLSchema.getSchemaAppliedDirectives().get(0);
         assertEquals("link", specLinkDirective.getName());
