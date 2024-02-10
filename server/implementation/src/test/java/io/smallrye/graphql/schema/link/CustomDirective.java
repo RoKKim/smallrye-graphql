@@ -6,7 +6,7 @@ import org.eclipse.microprofile.graphql.Name;
 
 import io.smallrye.graphql.api.Directive;
 
-@Directive(on = {OBJECT})
+@Directive(on = { OBJECT })
 @Name("custom")
 public @interface CustomDirective {
 }

@@ -28,7 +28,7 @@ import io.smallrye.graphql.api.federation.link.Purpose;
         @Import(name = "@requires"),
         @Import(name = "FieldSet", as = "Field")
 }, as = "smallrye", _for = Purpose.EXECUTION)
-@Link(url = "https://smallrye.io/custom/v1.0", _import = {@Import(name = "@custom", as = "@smallryeCustom")})
+@Link(url = "https://smallrye.io/custom/v1.0", _import = { @Import(name = "@custom", as = "@smallryeCustom") })
 public class Link8Api {
 
     @Query
