@@ -22,6 +22,10 @@ import io.smallrye.graphql.schema.model.Schema;
 import io.smallrye.graphql.spi.config.Config;
 
 /**
+ * This class is roughly based on the
+ * {@link LinkDirectiveProcessor#loadFederationImportedDefinitions(TypeDefinitionRegistry)} method, but since it
+ * only accepts {@link TypeDefinitionRegistry} as an argument, it is not directly in our case.
+ *
  * @see <a href="https://specs.apollo.dev/link/v1.0/#Import">link v1.0</a>
  */
 public class LinkProcessor {
@@ -49,11 +53,6 @@ public class LinkProcessor {
         this.federationSpecVersionImports = new ArrayList<>();
     }
 
-    /**
-     * This method is roughly based on the
-     * {@link LinkDirectiveProcessor#loadFederationImportedDefinitions(TypeDefinitionRegistry)} method, but since it
-     * only accepts {@link TypeDefinitionRegistry} as an argument, it is not directly usable here.
-     */
     public void createLinkImports() {
         if (Config.get().isFederationEnabled()) {
             List<DirectiveInstance> specLinkDirectives = new ArrayList<>();
