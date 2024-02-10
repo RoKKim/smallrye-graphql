@@ -96,10 +96,10 @@ public class Directives {
                 .filter(methodInfo -> methodInfo.name().equals(annotationName))
                 .findFirst();
         if (matchingMethod.isPresent()) {
-            // if the method name is modified when creating the directive type, we need to use the modified name
+            // If the method name is modified when creating the directive type, we need to use the modified name
             MethodInfo method = matchingMethod.get();
-            Annotations annotationsForMethod = Annotations.getAnnotationsForInterfaceField(method);
-            return TypeNameHelper.getMethodName(method, annotationsForMethod);
+            return TypeNameHelper.getMethodName(matchingMethod.get(),
+                    Annotations.getAnnotationsForInterfaceField(method));
         }
         return annotationName;
     }
