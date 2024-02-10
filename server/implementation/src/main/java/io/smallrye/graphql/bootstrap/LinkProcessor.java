@@ -31,6 +31,7 @@ import io.smallrye.graphql.spi.config.Config;
 public class LinkProcessor {
 
     private String specUrl;
+    private String specNamespace;
 
     private final Schema schema;
     private final Map<String, String> specImports;
@@ -93,7 +94,8 @@ public class LinkProcessor {
 
         DirectiveInstance linkDirective = linkDirectives.get(0);
         specUrl = (String) linkDirective.getValues().get("url");
-        validateNamespace(linkDirective, specUrl);
+        specNamespace = (String) linkDirective.getValues().get("as");
+        validateNamespace(specNamespace, specUrl);
 
         String federationVersion = extractFederationVersion(specUrl);
         // We only support Federation 2.0
@@ -127,9 +129,8 @@ public class LinkProcessor {
         }
     }
 
-    private void validateNamespace(DirectiveInstance linkDirective, String specUrl) {
-        if (linkDirective.getValues().get("as") != null) {
-            String namespace = (String) linkDirective.getValues().get("as");
+    private void validateNamespace(String namespace, String url) {
+        if (namespace != null) {
             // Check the format of the as argument, as per the documentation
             if (namespace.startsWith("@")) {
                 throw new RuntimeException(String.format(
@@ -192,7 +193,7 @@ public class LinkProcessor {
                     throw new RuntimeException(
                             String.format(
                                     "Import name '%s' and alias '%s' on on @link directive must be of the same type: " +
-                                            "either both directives or both types.",
+                                            "either both directives or both types",
                                     importName, importAs));
                 }
 
@@ -261,8 +262,10 @@ public class LinkProcessor {
                 if (name.equals("Import") || name.equals("Purpose")) {
                     return "link__" + name;
                 } else {
-                    // Apply default namespace
-                    return "federation__" + name;
+                    // If Federation spec namespace is null and apply default "federation__" prefix, else apply
+                    // specNamespace + "__" prefix
+                    String prefix = (specNamespace == null) ? "federation__" : specNamespace + "__";
+                    return prefix + name;
                 }
             }
         } else {
