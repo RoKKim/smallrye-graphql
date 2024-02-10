@@ -101,18 +101,24 @@ public class LinkProcessor {
             throw new UnsupportedFederationVersionException(specUrl);
         }
 
-        processImports((Object[]) linkDirective.getValues().get("import"), specImports);
-        for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
-            validateDirectiveSupport(specImports, federationVersion, directiveInfo.getKey(),
-                    directiveInfo.getValue());
-        }
-
         // Based on the Federation spec URL, we load the definitions and save them to a separate list
         processFederationSpecImports(specUrl, federationSpecVersionImports);
         if (!federationSpecVersionImports.contains("@link")) {
             // @link is not allowed to be imported
             throw new RuntimeException("Import key @link should not be imported within @link directive itself");
         }
+
+        processImports((Object[]) linkDirective.getValues().get("import"), specImports);
+        for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
+            validateDirectiveSupport(specImports, federationVersion, directiveInfo.getKey(),
+                    directiveInfo.getValue());
+        }
+        specImports.forEach((key, value) -> {
+            if (!federationSpecVersionImports.contains(key)) {
+                throw new RuntimeException(
+                        String.format("Import key %s is not present in the Federation spec %s", key, specUrl));
+            }
+        });
     }
 
     private void createLinkImports(List<DirectiveInstance> linkDirectives) {
@@ -221,7 +227,7 @@ public class LinkProcessor {
         if (specUrl != null && !specImports.containsKey(key) && federationSpecVersionImports.contains(key) &&
                 !key.equals("@link")) {
             throw new RuntimeException(
-                    String.format("Directive '%s' is used but not imported inside @link directive", key));
+                    String.format("Directive %s is used but not imported inside @link directive", key));
         }
         return newNameDirective(name);
     }
