@@ -1,5 +1,6 @@
 package io.smallrye.graphql.api.federation.link;
 
+import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.Ignore;
 
 /**
@@ -12,7 +13,9 @@ import org.eclipse.microprofile.graphql.Ignore;
  * </ul>
  */
 public enum Purpose {
+    @Description("`SECURITY` features provide metadata necessary to securely resolve fields.")
     SECURITY,
+    @Description("`EXECUTION` features provide metadata necessary for operation execution.")
     EXECUTION,
     @Ignore
     UNDEFINED

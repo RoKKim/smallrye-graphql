@@ -4,6 +4,7 @@ import static com.apollographql.federation.graphqljava.FederationDirectives.load
 
 import java.lang.module.ModuleDescriptor;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,6 @@ import graphql.schema.idl.TypeDefinitionRegistry;
 import io.smallrye.graphql.scalar.federation.ImportCoercing;
 import io.smallrye.graphql.schema.model.DirectiveInstance;
 import io.smallrye.graphql.schema.model.Schema;
-import io.smallrye.graphql.spi.config.Config;
 
 /**
  * This class is roughly based on the
@@ -36,7 +36,7 @@ public class LinkProcessor {
     private final Schema schema;
     private final Map<String, String> specImports;
     private final Map<String, String> imports;
-    private final List<String> federationSpecVersionImports;
+    private final List<String> federationSpecDefinitions;
 
     private static final Pattern FEDERATION_VERSION_PATTERN = Pattern.compile("/v([\\d.]+)$");
     private static final Map<String, String> FEDERATION_DIRECTIVES_VERSION = Map.of(
@@ -46,37 +46,36 @@ public class LinkProcessor {
             "@requiresScopes", "2.5",
             "@policy", "2.6");
     private static final ImportCoercing IMPORT_COERCING = new ImportCoercing();
+    private static final List<String> FORBIDDEN_SPEC_DEFINITIONS = Arrays.asList("@link", "Import", "Purpose");
 
     public LinkProcessor(Schema schema) {
         this.schema = schema;
         this.imports = new LinkedHashMap<>();
         this.specImports = new LinkedHashMap<>();
-        this.federationSpecVersionImports = new ArrayList<>();
+        this.federationSpecDefinitions = new ArrayList<>();
     }
 
     public void createLinkImports() {
-        if (Config.get().isFederationEnabled()) {
-            List<DirectiveInstance> specLinkDirectives = new ArrayList<>();
-            List<DirectiveInstance> linkDirectives = new ArrayList<>();
+        List<DirectiveInstance> specLinkDirectives = new ArrayList<>();
+        List<DirectiveInstance> linkDirectives = new ArrayList<>();
 
-            schema.getDirectiveInstances().stream()
-                    .filter(directiveInstance -> "link".equals(directiveInstance.getType().getName()))
-                    .filter(directiveInstance -> {
-                        Map<String, Object> values = directiveInstance.getValues();
-                        return values.containsKey("url") && values.get("url") instanceof String;
-                    })
-                    .forEach(directiveInstance -> {
-                        String url = (String) directiveInstance.getValues().get("url");
-                        if (url.startsWith("https://specs.apollo.dev/federation/")) {
-                            specLinkDirectives.add(directiveInstance);
-                        } else {
-                            linkDirectives.add(directiveInstance);
-                        }
-                    });
+        schema.getDirectiveInstances().stream()
+                .filter(directiveInstance -> "link".equals(directiveInstance.getType().getName()))
+                .filter(directiveInstance -> {
+                    Map<String, Object> values = directiveInstance.getValues();
+                    return values.containsKey("url") && values.get("url") instanceof String;
+                })
+                .forEach(directiveInstance -> {
+                    String url = (String) directiveInstance.getValues().get("url");
+                    if (url.startsWith("https://specs.apollo.dev/federation/")) {
+                        specLinkDirectives.add(directiveInstance);
+                    } else {
+                        linkDirectives.add(directiveInstance);
+                    }
+                });
 
-            createSpecLinkImports(specLinkDirectives);
-            createLinkImports(linkDirectives);
-        }
+        createSpecLinkImports(specLinkDirectives);
+        createLinkImports(linkDirectives);
     }
 
     private void createSpecLinkImports(List<DirectiveInstance> linkDirectives) {
@@ -97,26 +96,23 @@ public class LinkProcessor {
         specNamespace = (String) linkDirective.getValues().get("as");
         validateNamespace(specNamespace, specUrl);
 
-        String federationVersion = extractFederationVersion(specUrl);
+        String federationSpecVersion = extractFederationVersion(specUrl);
         // We only support Federation 2.0
-        if (isVersionGreaterThan("2.0", federationVersion)) {
+        if (isVersionGreaterThan("2.0", federationSpecVersion)) {
             throw new UnsupportedFederationVersionException(specUrl);
         }
 
         // Based on the Federation spec URL, we load the definitions and save them to a separate list
-        processFederationSpecImports(specUrl, federationSpecVersionImports);
-        if (!federationSpecVersionImports.contains("@link")) {
-            // @link is not allowed to be imported
-            throw new RuntimeException("Import key @link should not be imported within @link directive itself");
-        }
+        processFederationSpecImports(specUrl, federationSpecDefinitions);
 
         processImports((Object[]) linkDirective.getValues().get("import"), specImports);
+        validateForbiddenSpecDefinitionsImport(specImports);
         for (Map.Entry<String, String> directiveInfo : FEDERATION_DIRECTIVES_VERSION.entrySet()) {
-            validateDirectiveSupport(specImports, federationVersion, directiveInfo.getKey(),
+            validateDirectiveSupport(specImports, federationSpecVersion, directiveInfo.getKey(),
                     directiveInfo.getValue());
         }
         specImports.forEach((key, value) -> {
-            if (!federationSpecVersionImports.contains(key)) {
+            if (!federationSpecDefinitions.contains(key)) {
                 throw new RuntimeException(
                         String.format("Import key %s is not present in the Federation spec %s", key, specUrl));
             }
@@ -135,18 +131,18 @@ public class LinkProcessor {
             if (namespace.startsWith("@")) {
                 throw new RuntimeException(String.format(
                         "Argument as %s for Federation spec %s on @link directive must not start with '@'", namespace,
-                        specUrl));
+                        url));
             }
             if (namespace.contains("__")) {
                 throw new RuntimeException(String.format(
                         "Argument as %s for Federation spec %s on @link directive must not contain the namespace " +
                                 "separator '__'",
-                        namespace, specUrl));
+                        namespace, url));
             }
             if (namespace.endsWith("_")) {
                 throw new RuntimeException(String.format(
                         "Argument as %s for Federation spec %s on @link directive must not end with an underscore",
-                        namespace, specUrl));
+                        namespace, url));
             }
         }
     }
@@ -219,6 +215,16 @@ public class LinkProcessor {
                         .collect(Collectors.toList()));
     }
 
+    private void validateForbiddenSpecDefinitionsImport(Map<String, String> imports) {
+        for (String forbiddenKey : FORBIDDEN_SPEC_DEFINITIONS) {
+            if (imports.containsKey(forbiddenKey)) {
+                throw new RuntimeException(
+                        String.format("Import key %s should not be imported within @link directive itself",
+                                forbiddenKey));
+            }
+        }
+    }
+
     public String newNameDirective(String name) {
         return newName(name, true);
     }
@@ -228,16 +234,12 @@ public class LinkProcessor {
     }
 
     private String newName(String name, boolean isDirective) {
-        if (!Config.get().isFederationEnabled()) {
-            return name;
-        }
-
         String key = isDirective ? "@" + name : name;
         if (imports.containsKey(key)) {
             // Our type can be imported using non-Federation spec @link
             String newName = imports.get(key);
             return isDirective ? newName.substring(1) : newName;
-        } else if (federationSpecVersionImports.contains(key) && !key.equals("@link")) {
+        } else if (federationSpecDefinitions.contains(key) && !key.equals("@link")) {
             // We only wish to rename the types that are defined by the Federation spec (e.g. @key, @external etc.),
             // but not common and custom types like String, BigInteger, BigDecimal etc. We also don't want to rename
             // the @link directive.

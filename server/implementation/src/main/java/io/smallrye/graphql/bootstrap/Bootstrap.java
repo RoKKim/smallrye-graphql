@@ -116,7 +116,7 @@ public class Bootstrap {
 
     private final ClassloadingService classloadingService = ClassloadingService.get();
 
-    private final LinkProcessor linkProcessor;
+    private LinkProcessor linkProcessor = null;
 
     public static GraphQLSchema bootstrap(Schema schema) {
         return bootstrap(schema, false);
@@ -135,7 +135,9 @@ public class Bootstrap {
 
     private Bootstrap(Schema schema, boolean skipInjectionValidation) {
         this.schema = schema;
-        this.linkProcessor = new LinkProcessor(schema);
+        if (Config.get().isFederationEnabled()) {
+            this.linkProcessor = new LinkProcessor(schema);
+        }
         // setting `skipInjectionValidation` through a system property is not recommended,
         // but kept for backward compatibility for now
         if (!Boolean.getBoolean("test.skip.injection.validation") && !skipInjectionValidation) {
@@ -169,7 +171,9 @@ public class Bootstrap {
     private void generateGraphQLSchema() {
         GraphQLSchema.Builder schemaBuilder = GraphQLSchema.newSchema();
 
-        linkProcessor.createLinkImports();
+        if (Config.get().isFederationEnabled()) {
+            linkProcessor.createLinkImports();
+        }
 
         createGraphQLCustomScalarTypes();
         createGraphQLEnumTypes();
@@ -289,7 +293,8 @@ public class Bootstrap {
 
     private void createGraphQLDirectiveType(DirectiveType directiveType) {
         GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
-                .name(linkProcessor.newNameDirective(directiveType.getName()))
+                .name(Config.get().isFederationEnabled() ? linkProcessor.newNameDirective(directiveType.getName())
+                        : directiveType.getName())
                 .description(directiveType.getDescription());
         for (String location : directiveType.getLocations()) {
             directiveBuilder.validLocation(DirectiveLocation.valueOf(location));
@@ -432,7 +437,8 @@ public class Bootstrap {
 
     private void createGraphQLEnumType(EnumType enumType) {
         GraphQLEnumType.Builder enumBuilder = GraphQLEnumType.newEnum()
-                .name(linkProcessor.newName(enumType.getName()))
+                .name(Config.get().isFederationEnabled() ? linkProcessor.newName(enumType.getName())
+                        : enumType.getName())
                 .description(enumType.getDescription());
         // Directives
         if (enumType.hasDirectiveInstances()) {
@@ -667,7 +673,8 @@ public class Bootstrap {
     private GraphQLDirective createGraphQLDirectiveFrom(DirectiveInstance directiveInstance) {
         DirectiveType directiveType = directiveInstance.getType();
         GraphQLDirective.Builder directiveBuilder = GraphQLDirective.newDirective()
-                .name(linkProcessor.newNameDirective(directiveType.getName()))
+                .name(Config.get().isFederationEnabled() ? linkProcessor.newNameDirective(directiveType.getName())
+                        : directiveType.getName())
                 .repeatable(directiveType.isRepeatable());
         for (Entry<String, Object> entry : directiveInstance.getValues().entrySet()) {
             String argumentName = entry.getKey();
@@ -1004,21 +1011,21 @@ public class Bootstrap {
         // Since we can rename scalar types using the link directive, but GraphQLScalarTypes has a static definition
         // of scalar types, we need to check if the scalar type has been renamed and if so, create a new one
         GraphQLScalarType graphQLScalarType = GraphQLScalarTypes.getScalarByName(fieldReference.getName());
-        String newName = linkProcessor.newName(fieldReference.getName());
+        String newName = Config.get().isFederationEnabled() ? linkProcessor.newName(fieldReference.getName())
+                : fieldReference.getName();
         if (fieldReference.getName().equals(newName)) {
             // If the field name equals the processed name, simply return the static scalar type
             return graphQLScalarType;
-        } else {
-            GraphQLScalarType newGraphQLScalarType = GraphQLScalarTypes.getScalarByName(newName);
-            if (newGraphQLScalarType == null) {
-                // If the processed name does not yet exist, create a new one and register it
-                newGraphQLScalarType = GraphQLScalarType.newScalar(graphQLScalarType)
-                        .name(newName)
-                        .build();
-                GraphQLScalarTypes.registerCustomScalar(newName, fieldReference.getClassName(), newGraphQLScalarType);
-            }
-            return newGraphQLScalarType;
         }
+        GraphQLScalarType newGraphQLScalarType = GraphQLScalarTypes.getScalarByName(newName);
+        if (newGraphQLScalarType == null) {
+            // If the processed name does not yet exist, create a new one and register it
+            newGraphQLScalarType = GraphQLScalarType.newScalar(graphQLScalarType)
+                    .name(newName)
+                    .build();
+            GraphQLScalarTypes.registerCustomScalar(newName, fieldReference.getClassName(), newGraphQLScalarType);
+        }
+        return newGraphQLScalarType;
     }
 
     private List<GraphQLArgument> createGraphQLArguments(List<Argument> arguments) {
